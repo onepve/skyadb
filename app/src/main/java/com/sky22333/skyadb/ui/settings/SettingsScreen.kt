@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material3.Button
@@ -32,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -69,6 +71,8 @@ private fun SettingsContent(
     onThemeModeSelected: (ThemeMode) -> Unit,
     onClearRecentDevicesClicked: () -> Unit,
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("设置") })
 
@@ -138,6 +142,16 @@ private fun SettingsContent(
                     description = "仅清理最近设备记录，其他设置不会受影响。",
                     statusText = uiState.statusText,
                     onClearRecentDevicesClicked = onClearRecentDevicesClicked,
+                )
+            }
+
+            item { SectionHeader(title = "关于") }
+            item {
+                ProjectLinkItem(
+                    icon = Icons.Outlined.OpenInNew,
+                    title = "项目地址",
+                    description = "skyadb",
+                    onClick = { uriHandler.openUri(ProjectUrl) },
                 )
             }
         }
@@ -351,6 +365,50 @@ private fun ClearDataItem(
         }
     }
 }
+
+@Composable
+private fun ProjectLinkItem(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppDimens.CardRadius),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(text = title, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = description,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+private const val ProjectUrl = "https://github.com/sky22333/skyadb"
 
 @Preview(name = "设置页", showBackground = true, widthDp = 390)
 @Composable
