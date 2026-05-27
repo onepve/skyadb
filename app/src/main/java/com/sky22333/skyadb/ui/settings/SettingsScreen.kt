@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material3.Button
@@ -148,7 +148,7 @@ private fun SettingsContent(
             item { SectionHeader(title = "关于") }
             item {
                 ProjectLinkItem(
-                    icon = Icons.Outlined.OpenInNew,
+                    icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     title = "项目地址",
                     description = "skyadb",
                     onClick = { uriHandler.openUri(ProjectUrl) },
