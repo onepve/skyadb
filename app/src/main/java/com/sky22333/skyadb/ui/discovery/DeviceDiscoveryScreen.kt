@@ -15,8 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -35,9 +37,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sky22333.skyadb.discovery.AdbMdnsEndpoint
+import com.sky22333.skyadb.discovery.AdbMdnsServiceType
 import com.sky22333.skyadb.discovery.AdbProbeState
 import com.sky22333.skyadb.discovery.AdbScanResult
 import com.sky22333.skyadb.discovery.LocalNetwork
@@ -51,6 +56,7 @@ import com.sky22333.skyadb.ui.theme.AppDimens
 fun DeviceDiscoveryScreen(
     onBackClick: () -> Unit,
     onUseEndpoint: (String, Int) -> Unit,
+    onPairEndpoint: (String, Int) -> Unit,
     viewModel: DeviceDiscoveryViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -62,6 +68,7 @@ fun DeviceDiscoveryScreen(
         onStartScanClick = viewModel::startScan,
         onStopScanClick = viewModel::stopScan,
         onUseEndpoint = onUseEndpoint,
+        onPairEndpoint = onPairEndpoint,
     )
 }
 
@@ -74,14 +81,15 @@ private fun DeviceDiscoveryContent(
     onStartScanClick: () -> Unit,
     onStopScanClick: () -> Unit,
     onUseEndpoint: (String, Int) -> Unit,
+    onPairEndpoint: (String, Int) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = {
                 Column {
-                    Text("局域网扫描")
+                    Text("局域网发现")
                     Text(
-                        text = scanRangeSummary(uiState.networks),
+                        text = "自动发现无线调试服务，也可主动扫描网段",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -105,6 +113,26 @@ private fun DeviceDiscoveryContent(
                 .padding(AppDimens.ScreenPadding),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
+            item {
+                SectionHeader(
+                    title = "自动发现",
+                    description = "显示开启无线调试或 WiFi ADB 广播的设备",
+                )
+            }
+            item {
+                MdnsDiscoveryStatus(
+                    running = uiState.mdnsRunning,
+                    endpoints = uiState.mdnsEndpoints,
+                    error = uiState.mdnsError,
+                )
+            }
+            items(uiState.mdnsEndpoints, key = { it.id }) { endpoint ->
+                MdnsEndpointCard(
+                    endpoint = endpoint,
+                    onUseEndpoint = onUseEndpoint,
+                    onPairEndpoint = onPairEndpoint,
+                )
+            }
             item {
                 ScanControlCard(
                     uiState = uiState,
@@ -135,6 +163,97 @@ private fun DeviceDiscoveryContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MdnsDiscoveryStatus(
+    running: Boolean,
+    endpoints: List<AdbMdnsEndpoint>,
+    error: String?,
+) {
+    when {
+        error != null -> Text(
+            text = "$error 当前网络可能不支持自动发现，可以继续使用下方网段扫描。",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        endpoints.isNotEmpty() -> Text(
+            text = "发现 ${endpoints.size} 个自动广播的 ADB 服务。",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodySmall,
+        )
+        running -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                text = "正在自动发现无线调试服务。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        else -> EmptyState(
+            title = "未发现自动广播的设备",
+            message = "请确认目标设备已开启无线调试，且处于同一局域网。也可以使用下方网段扫描。",
+        )
+    }
+}
+
+@Composable
+private fun MdnsEndpointCard(
+    endpoint: AdbMdnsEndpoint,
+    onUseEndpoint: (String, Int) -> Unit,
+    onPairEndpoint: (String, Int) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppDimens.CardRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppDimens.CardPadding),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = endpoint.type.icon(),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(endpoint.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "${endpoint.type.label} · ${endpoint.endpoint}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = endpoint.type.description,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            TextButton(
+                onClick = {
+                    if (endpoint.type == AdbMdnsServiceType.Pairing) {
+                        onPairEndpoint(endpoint.host, endpoint.port)
+                    } else {
+                        onUseEndpoint(endpoint.host, endpoint.port)
+                    }
+                },
+            ) {
+                Text(endpoint.type.actionLabel)
+            }
+        }
+    }
+}
+
+private fun AdbMdnsServiceType.icon(): ImageVector {
+    return when (this) {
+        AdbMdnsServiceType.Pairing -> Icons.Outlined.Key
+        AdbMdnsServiceType.Connect -> Icons.Outlined.CheckCircle
+        AdbMdnsServiceType.Legacy -> Icons.Outlined.SettingsEthernet
     }
 }
 
@@ -298,6 +417,7 @@ private fun DeviceDiscoveryContentPreview() {
             onStartScanClick = {},
             onStopScanClick = {},
             onUseEndpoint = { _, _ -> },
+            onPairEndpoint = { _, _ -> },
         )
     }
 }

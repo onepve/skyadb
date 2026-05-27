@@ -4,6 +4,8 @@ import android.content.Context
 import com.sky22333.skyadb.adb.KadbManager
 import com.sky22333.skyadb.data.AppSettingsStore
 import com.sky22333.skyadb.data.RecentDeviceStore
+import com.sky22333.skyadb.discovery.AndroidAdbMdnsDiscovery
+import com.sky22333.skyadb.discovery.AdbMdnsDiscovery
 import com.sky22333.skyadb.discovery.LanAdbScanner
 import com.sky22333.skyadb.discovery.NetworkInfoProvider
 import com.sky22333.skyadb.download.NetworkDownloadManager
@@ -32,6 +34,9 @@ object AppServices {
         NetworkInfoProvider(requireNotNull(appContext) { "AppServices 尚未初始化 Context" })
     }
     val lanAdbScanner: LanAdbScanner by lazy { LanAdbScanner() }
+    val adbMdnsDiscovery: AdbMdnsDiscovery by lazy {
+        AndroidAdbMdnsDiscovery(requireNotNull(appContext) { "AppServices 尚未初始化 Context" })
+    }
     val adbRepository: DefaultAdbRepository by lazy {
         DefaultAdbRepository(kadbManager, recentDeviceStore, settingsStore)
     }

@@ -231,7 +231,7 @@ private fun ManualConnectCard(
             ) {
                 Icon(imageVector = Icons.Outlined.Search, contentDescription = null)
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "扫描局域网设备")
+                Text(text = "发现局域网设备")
             }
         }
     }

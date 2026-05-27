@@ -61,7 +61,17 @@ class HomeViewModel(
     }
 
     fun onDiscoveredEndpointSelected(host: String, port: Int) {
-        updateForm(ip = host, port = port.toString())
+        val portText = port.toString()
+        val validation = validateForm(host, portText)
+        state.value = state.value.copy(
+            ip = host,
+            port = portText,
+            ipError = validation.ipError,
+            portError = validation.portError,
+            connectEnabled = validation.isValid,
+            operationStatus = OperationStatus.Success("已填入自动发现的连接地址，请确认后连接。"),
+            connectionStateText = "未连接设备",
+        )
     }
 
     fun onConnectClicked() {

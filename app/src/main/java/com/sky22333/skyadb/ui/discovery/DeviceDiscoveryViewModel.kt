@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sky22333.skyadb.AppServices
 import com.sky22333.skyadb.data.AppSettingsStore
+import com.sky22333.skyadb.discovery.AdbMdnsDiscovery
+import com.sky22333.skyadb.discovery.AdbMdnsEndpoint
 import com.sky22333.skyadb.discovery.AdbScanResult
 import com.sky22333.skyadb.discovery.LanAdbScanner
 import com.sky22333.skyadb.discovery.LocalNetwork
@@ -26,6 +28,9 @@ data class DeviceDiscoveryUiState(
     val scannedCount: Int = 0,
     val totalCount: Int = 0,
     val results: List<AdbScanResult> = emptyList(),
+    val mdnsRunning: Boolean = false,
+    val mdnsEndpoints: List<AdbMdnsEndpoint> = emptyList(),
+    val mdnsError: String? = null,
     val status: OperationStatus = OperationStatus.Idle,
 ) {
     val network: LocalNetwork? = networks.firstOrNull()
@@ -34,6 +39,7 @@ data class DeviceDiscoveryUiState(
 class DeviceDiscoveryViewModel(
     private val networkInfoProvider: NetworkInfoProvider = AppServices.networkInfoProvider,
     private val scanner: LanAdbScanner = AppServices.lanAdbScanner,
+    private val mdnsDiscovery: AdbMdnsDiscovery = AppServices.adbMdnsDiscovery,
     private val settingsStore: AppSettingsStore = AppServices.settingsStore,
     private val adbRepository: AdbRepository = AppServices.adbRepository,
 ) : ViewModel() {
@@ -45,6 +51,15 @@ class DeviceDiscoveryViewModel(
 
     init {
         refreshNetwork()
+        viewModelScope.launch {
+            mdnsDiscovery.state.collect { mdns ->
+                state.value = state.value.copy(
+                    mdnsRunning = mdns.running,
+                    mdnsEndpoints = mdns.endpoints,
+                    mdnsError = mdns.error,
+                )
+            }
+        }
         viewModelScope.launch {
             settingsStore.settings.collect { settings ->
                 configuredScanRanges = settings.scanRanges
@@ -61,6 +76,8 @@ class DeviceDiscoveryViewModel(
     }
 
     fun refreshNetwork() {
+        mdnsDiscovery.stop()
+        mdnsDiscovery.start()
         val networks = buildScanNetworks()
         state.value = state.value.copy(
             networks = networks,
@@ -135,6 +152,7 @@ class DeviceDiscoveryViewModel(
 
     override fun onCleared() {
         scanJob?.cancel()
+        mdnsDiscovery.stop()
         super.onCleared()
     }
 

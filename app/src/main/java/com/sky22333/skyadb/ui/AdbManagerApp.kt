@@ -144,7 +144,26 @@ fun AdbManagerApp() {
             }
             composable(AppDestination.Settings.route) { SettingsScreen() }
             composable(AppDestination.Pairing.route) {
-                PairingScreen(onBackClick = { navController.popBackStack() })
+                val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+                val pairingHostState = savedStateHandle
+                    ?.getStateFlow(PairingHostKey, "")
+                    ?.collectAsState()
+                    ?: remember { mutableStateOf("") }
+                val pairingPortState = savedStateHandle
+                    ?.getStateFlow(PairingPortKey, "")
+                    ?.collectAsState()
+                    ?: remember { mutableStateOf("") }
+                val pairingHost by pairingHostState
+                val pairingPort by pairingPortState
+                PairingScreen(
+                    onBackClick = { navController.popBackStack() },
+                    discoveredHost = pairingHost,
+                    discoveredPort = pairingPort,
+                    onDiscoveredEndpointConsumed = {
+                        savedStateHandle?.remove<String>(PairingHostKey)
+                        savedStateHandle?.remove<String>(PairingPortKey)
+                    },
+                )
             }
             composable(AppDestination.Discovery.route) {
                 DeviceDiscoveryScreen(
@@ -153,6 +172,11 @@ fun AdbManagerApp() {
                         navController.previousBackStackEntry?.savedStateHandle?.set(DiscoveryHostKey, host)
                         navController.previousBackStackEntry?.savedStateHandle?.set(DiscoveryPortKey, port.toString())
                         navController.popBackStack()
+                    },
+                    onPairEndpoint = { host, port ->
+                        navController.navigate(AppDestination.Pairing.route)
+                        navController.currentBackStackEntry?.savedStateHandle?.set(PairingHostKey, host)
+                        navController.currentBackStackEntry?.savedStateHandle?.set(PairingPortKey, port.toString())
                     },
                 )
             }
@@ -208,3 +232,5 @@ private sealed class AppDestination(
 
 private const val DiscoveryHostKey = "discovery_host"
 private const val DiscoveryPortKey = "discovery_port"
+private const val PairingHostKey = "pairing_host"
+private const val PairingPortKey = "pairing_port"

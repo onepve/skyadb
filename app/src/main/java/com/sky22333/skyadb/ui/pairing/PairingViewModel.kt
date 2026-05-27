@@ -49,6 +49,20 @@ class PairingViewModel(
         )
     }
 
+    fun onDiscoveredEndpointSelected(host: String, port: Int) {
+        val currentCode = state.value.pairingCode
+        val validation = validateForm(host, port.toString(), currentCode)
+        state.value = state.value.copy(
+            ip = host,
+            pairingPort = port.toString(),
+            ipError = validation.ipError,
+            portError = validation.portError,
+            codeError = validation.codeError,
+            pairEnabled = validation.isValid,
+            operationStatus = OperationStatus.Success("已填入自动发现的配对地址，请输入 6 位配对码。"),
+        )
+    }
+
     fun onPairClicked() {
         val current = state.value
         val validation = validateForm(current.ip, current.pairingPort, current.pairingCode)
