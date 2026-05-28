@@ -36,9 +36,9 @@ sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 
 ## 预览
 
 <div style="display:inline-block">
-<img src="docs/img/demo1.jpg" alt="demo1" width="300">
-<img src="docs/img/demo2.jpg" alt="demo2" width="300">
-<img src="docs/img/demo3.jpg" alt="demo2" width="300">
+<img src="docs/img/demo1.jpg" alt="demo1" width="230">
+<img src="docs/img/demo2.jpg" alt="demo2" width="230">
+<img src="docs/img/demo3.jpg" alt="demo2" width="230">
 </div>
 
 ---
