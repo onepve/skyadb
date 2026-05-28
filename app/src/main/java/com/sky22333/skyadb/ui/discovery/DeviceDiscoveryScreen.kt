@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -63,6 +64,13 @@ fun DeviceDiscoveryScreen(
     viewModel: DeviceDiscoveryViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    DisposableEffect(viewModel) {
+        viewModel.startDiscovery()
+        onDispose {
+            viewModel.stopDiscovery()
+        }
+    }
 
     DeviceDiscoveryContent(
         bottomPadding = bottomPadding,

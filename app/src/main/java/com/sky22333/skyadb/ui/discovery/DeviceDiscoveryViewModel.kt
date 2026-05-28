@@ -48,9 +48,9 @@ class DeviceDiscoveryViewModel(
     private var scanJob: Job? = null
     private var recentDevices: List<AdbDevice> = emptyList()
     private var configuredScanRanges: String = ""
+    private var discoveryActive = false
 
     init {
-        refreshNetwork()
         viewModelScope.launch {
             mdnsDiscovery.state.collect { mdns ->
                 state.value = state.value.copy(
@@ -64,20 +64,36 @@ class DeviceDiscoveryViewModel(
             settingsStore.settings.collect { settings ->
                 configuredScanRanges = settings.scanRanges
                 state.value = state.value.copy(ports = listOf(5555, settings.defaultPort).distinct())
-                if (!state.value.scanning) refreshNetwork()
+                if (!state.value.scanning) refreshNetworkInfoOnly()
             }
         }
         viewModelScope.launch {
             adbRepository.recentDevices.collect { devices ->
                 recentDevices = devices
-                if (!state.value.scanning) refreshNetwork()
+                if (!state.value.scanning) refreshNetworkInfoOnly()
             }
         }
     }
 
-    fun refreshNetwork() {
+    fun startDiscovery() {
+        discoveryActive = true
+        refreshNetwork()
+    }
+
+    fun stopDiscovery() {
+        discoveryActive = false
         mdnsDiscovery.stop()
-        mdnsDiscovery.start()
+    }
+
+    fun refreshNetwork() {
+        if (discoveryActive) {
+            mdnsDiscovery.stop()
+            mdnsDiscovery.start()
+        }
+        refreshNetworkInfoOnly()
+    }
+
+    private fun refreshNetworkInfoOnly() {
         val networks = buildScanNetworks()
         state.value = state.value.copy(
             networks = networks,
@@ -91,7 +107,7 @@ class DeviceDiscoveryViewModel(
 
     fun startScan() {
         val networks = state.value.networks.ifEmpty {
-            refreshNetwork()
+            refreshNetworkInfoOnly()
             return
         }
         val hosts = networks.flatMap { it.hosts }.distinct()
