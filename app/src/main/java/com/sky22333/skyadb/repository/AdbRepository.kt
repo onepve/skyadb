@@ -9,6 +9,7 @@ import com.sky22333.skyadb.model.AppInfo
 import com.sky22333.skyadb.model.ConnectionState
 import com.sky22333.skyadb.model.DeviceInfo
 import com.sky22333.skyadb.model.DeviceType
+import com.sky22333.skyadb.model.RemoteFileEntry
 import com.sky22333.skyadb.model.ShellCommandResult
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +33,9 @@ interface AdbRepository {
     suspend fun launchApp(packageName: String): AdbOperationResult<Unit>
     suspend fun forceStopApp(packageName: String): AdbOperationResult<Unit>
     suspend fun uninstall(packageName: String): AdbOperationResult<Unit>
+    suspend fun listFiles(remotePath: String): AdbOperationResult<List<RemoteFileEntry>>
+    suspend fun makeDirectory(remotePath: String): AdbOperationResult<Unit>
+    suspend fun deleteFile(remotePath: String, isDirectory: Boolean): AdbOperationResult<Unit>
     suspend fun push(localFile: File, remotePath: String): AdbOperationResult<Unit>
     suspend fun pull(remotePath: String, localFile: File): AdbOperationResult<Unit>
     suspend fun captureScreenshot(localFile: File): AdbOperationResult<File>
@@ -144,6 +148,18 @@ class DefaultAdbRepository(
 
     override suspend fun uninstall(packageName: String): AdbOperationResult<Unit> {
         return kadbManager.uninstall(packageName)
+    }
+
+    override suspend fun listFiles(remotePath: String): AdbOperationResult<List<RemoteFileEntry>> {
+        return kadbManager.listFiles(remotePath)
+    }
+
+    override suspend fun makeDirectory(remotePath: String): AdbOperationResult<Unit> {
+        return kadbManager.makeDirectory(remotePath)
+    }
+
+    override suspend fun deleteFile(remotePath: String, isDirectory: Boolean): AdbOperationResult<Unit> {
+        return kadbManager.deleteFile(remotePath, isDirectory)
     }
 
     override suspend fun push(localFile: File, remotePath: String): AdbOperationResult<Unit> {

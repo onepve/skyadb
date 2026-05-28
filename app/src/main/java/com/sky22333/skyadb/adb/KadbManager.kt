@@ -4,6 +4,8 @@ import com.flyfishxu.kadb.Kadb
 import com.sky22333.skyadb.model.AdbOperationResult
 import com.sky22333.skyadb.model.AppInfo
 import com.sky22333.skyadb.model.DeviceInfo
+import com.sky22333.skyadb.model.RemoteFileEntry
+import com.sky22333.skyadb.model.RemoteFileListParser
 import com.sky22333.skyadb.model.ShellCommandResult
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -207,6 +209,57 @@ class KadbManager {
         }
     }
 
+    suspend fun listFiles(remotePath: String): AdbOperationResult<List<RemoteFileEntry>> = withContext(Dispatchers.IO) {
+        val path = remotePath.ifBlank { "/" }
+        val command = buildListFilesCommand(path)
+        when (val result = shell(command)) {
+            is AdbOperationResult.Failure -> result
+            is AdbOperationResult.Success -> {
+                if (result.data.exitCode == 0) {
+                    AdbOperationResult.Success(RemoteFileListParser.parse(result.data.output, path))
+                } else {
+                    AdbOperationResult.Failure(
+                        message = "读取目录失败",
+                        suggestion = result.data.errorOutput.ifBlank { "请确认设备路径存在，并且当前用户有权限读取。" },
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun makeDirectory(remotePath: String): AdbOperationResult<Unit> = withContext(Dispatchers.IO) {
+        when (val result = shell("mkdir ${shellQuote(remotePath)}")) {
+            is AdbOperationResult.Failure -> result
+            is AdbOperationResult.Success -> {
+                if (result.data.exitCode == 0) {
+                    AdbOperationResult.Success(Unit)
+                } else {
+                    AdbOperationResult.Failure(
+                        message = "新建文件夹失败",
+                        suggestion = result.data.errorOutput.ifBlank { "请确认目标路径可写，且文件夹名称未被占用。" },
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun deleteFile(remotePath: String, isDirectory: Boolean): AdbOperationResult<Unit> = withContext(Dispatchers.IO) {
+        val command = if (isDirectory) "rmdir ${shellQuote(remotePath)}" else "rm -f ${shellQuote(remotePath)}"
+        when (val result = shell(command)) {
+            is AdbOperationResult.Failure -> result
+            is AdbOperationResult.Success -> {
+                if (result.data.exitCode == 0) {
+                    AdbOperationResult.Success(Unit)
+                } else {
+                    AdbOperationResult.Failure(
+                        message = "删除失败",
+                        suggestion = result.data.errorOutput.ifBlank { "请确认路径存在，目录为空，并且当前用户有权限删除。" },
+                    )
+                }
+            }
+        }
+    }
+
     suspend fun push(localFile: File, remotePath: String): AdbOperationResult<Unit> = withContext(Dispatchers.IO) {
         val kadb = activeKadb ?: return@withContext AdbOperationResult.Failure(
             message = "未连接设备",
@@ -311,5 +364,29 @@ class KadbManager {
                 )
             }
             .toList()
+    }
+
+    private fun buildListFilesCommand(remotePath: String): String {
+        val path = shellQuote(remotePath)
+        return """
+            dir=$path
+            [ -d "${'$'}dir" ] || exit 2
+            for f in "${'$'}dir"/* "${'$'}dir"/.*; do
+              [ -e "${'$'}f" ] || continue
+              name="${'$'}{f##*/}"
+              [ "${'$'}name" = "." ] && continue
+              [ "${'$'}name" = ".." ] && continue
+              if [ -d "${'$'}f" ]; then
+                printf 'D\t%s\t0\n' "${'$'}name"
+              else
+                size=${'$'}(stat -c %s "${'$'}f" 2>/dev/null || echo 0)
+                printf 'F\t%s\t%s\n' "${'$'}name" "${'$'}size"
+              fi
+            done
+        """.trimIndent()
+    }
+
+    private fun shellQuote(value: String): String {
+        return "'" + value.replace("'", "'\"'\"'") + "'"
     }
 }

@@ -3,24 +3,36 @@ package com.sky22333.skyadb.ui.files
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.FileUpload
-import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.UploadFile
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,23 +40,31 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.model.OperationStatus
+import com.sky22333.skyadb.model.RemoteFileEntry
+import com.sky22333.skyadb.ui.components.EmptyState
 import com.sky22333.skyadb.ui.components.SectionHeader
 import com.sky22333.skyadb.ui.theme.AdbManagerTheme
 import com.sky22333.skyadb.ui.theme.AppDimens
+import java.util.Locale
 
 @Composable
 fun FileTransferScreen(
@@ -53,49 +73,70 @@ fun FileTransferScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    var downloadEntry by remember { mutableStateOf<RemoteFileEntry?>(null) }
     val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         viewModel.onLocalFileSelected(uri)
     }
     val createFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
-        viewModel.pullToUri(context, uri)
+        val entry = downloadEntry
+        downloadEntry = null
+        if (entry != null) {
+            viewModel.downloadToUri(context, entry, uri)
+        }
     }
 
-    FileTransferContent(
+    LaunchedEffect(Unit) {
+        viewModel.loadCurrentPath()
+    }
+
+    FileManagerContent(
         uiState = uiState,
         onBackClick = onBackClick,
-        onModeChanged = viewModel::onModeChanged,
-        onRemotePathChanged = viewModel::onRemotePathChanged,
-        onPickFileClick = { openFile.launch(arrayOf("*/*")) },
-        onPushClick = viewModel::pushSelectedFile,
-        onPullClick = {
-            val fileName = uiState.remotePath.substringAfterLast('/').ifBlank { "pulled-file" }
-            createFile.launch(fileName)
+        onRefreshClick = viewModel::loadCurrentPath,
+        onPathChanged = viewModel::onPathInputChanged,
+        onJumpClick = viewModel::jumpToPath,
+        onGoUpClick = viewModel::goUp,
+        onUploadClick = { openFile.launch(arrayOf("*/*")) },
+        onNewFolderClick = viewModel::showNewFolderDialog,
+        onOpenEntry = viewModel::openEntry,
+        onDownloadEntry = { entry ->
+            downloadEntry = entry
+            createFile.launch(entry.name)
         },
+        onDeleteEntry = viewModel::requestDelete,
+        onCancelDelete = viewModel::cancelDelete,
+        onConfirmDelete = viewModel::confirmDelete,
+        onDismissNewFolder = viewModel::dismissNewFolderDialog,
+        onCreateFolder = viewModel::createFolder,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FileTransferContent(
+private fun FileManagerContent(
     uiState: FileTransferUiState,
     onBackClick: () -> Unit,
-    onModeChanged: (FileTransferMode) -> Unit,
-    onRemotePathChanged: (String) -> Unit,
-    onPickFileClick: () -> Unit,
-    onPushClick: () -> Unit,
-    onPullClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    onPathChanged: (String) -> Unit,
+    onJumpClick: () -> Unit,
+    onGoUpClick: () -> Unit,
+    onUploadClick: () -> Unit,
+    onNewFolderClick: () -> Unit,
+    onOpenEntry: (RemoteFileEntry) -> Unit,
+    onDownloadEntry: (RemoteFileEntry) -> Unit,
+    onDeleteEntry: (RemoteFileEntry) -> Unit,
+    onCancelDelete: () -> Unit,
+    onConfirmDelete: () -> Unit,
+    onDismissNewFolder: () -> Unit,
+    onCreateFolder: (String) -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = {
                 Column {
-                    Text("文件传输")
+                    Text("文件管理")
                     Text(
-                        "发送本机文件，或从设备拉取文件",
+                        "浏览目标设备文件，上传或下载文件",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -106,75 +147,121 @@ private fun FileTransferContent(
                     Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回")
                 }
             },
+            actions = {
+                IconButton(onClick = onRefreshClick, enabled = !uiState.loading) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = "刷新目录")
+                }
+            },
         )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(AppDimens.ScreenPadding),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(AppDimens.ScreenPadding),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(AppDimens.CardRadius),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            ) {
-                Column(
-                    modifier = Modifier.padding(AppDimens.CardPadding),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    SectionHeader(title = "传输任务", description = "设备路径需要以 / 开头")
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        FileTransferMode.entries.forEachIndexed { index, mode ->
-                            SegmentedButton(
-                                selected = uiState.mode == mode,
-                                onClick = { onModeChanged(mode) },
-                                shape = SegmentedButtonDefaults.itemShape(index, FileTransferMode.entries.size),
-                            ) {
-                                Text(mode.label)
-                            }
-                        }
-                    }
-                    if (uiState.mode == FileTransferMode.Push) {
-                        Text(
-                            text = uiState.selectedLocalName ?: "尚未选择本地文件",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        OutlinedButton(onClick = onPickFileClick, modifier = Modifier.fillMaxWidth()) {
-                            Icon(imageVector = Icons.Outlined.FolderOpen, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("选择本地文件")
-                        }
-                    }
-                    OutlinedTextField(
-                        value = uiState.remotePath,
-                        onValueChange = onRemotePathChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text(if (uiState.mode == FileTransferMode.Push) "设备目标路径" else "设备文件路径") },
-                        singleLine = true,
-                        isError = uiState.remotePathError != null,
-                        supportingText = {
-                            Text(uiState.remotePathError ?: "例如 /sdcard/Download/file.txt")
-                        },
+            item {
+                PathCard(
+                    uiState = uiState,
+                    onPathChanged = onPathChanged,
+                    onJumpClick = onJumpClick,
+                    onGoUpClick = onGoUpClick,
+                    onUploadClick = onUploadClick,
+                    onNewFolderClick = onNewFolderClick,
+                )
+            }
+            item { FileManagerStatus(status = uiState.operationStatus, loading = uiState.loading) }
+            item {
+                SectionHeader(
+                    title = "文件列表",
+                    description = "${uiState.currentPath} · ${uiState.entries.size} 个项目",
+                )
+            }
+            if (!uiState.loading && uiState.entries.isEmpty()) {
+                item {
+                    EmptyState(
+                        title = "目录为空",
+                        message = "可以上传文件，或跳转到其他设备目录。",
                     )
-                    FileTransferStatus(status = uiState.operationStatus)
-                    Button(
-                        onClick = if (uiState.mode == FileTransferMode.Push) onPushClick else onPullClick,
-                        enabled = uiState.actionEnabled,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(
-                            imageVector = if (uiState.mode == FileTransferMode.Push) {
-                                Icons.Outlined.FileUpload
-                            } else {
-                                Icons.Outlined.FileDownload
-                            },
-                            contentDescription = null,
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (uiState.mode == FileTransferMode.Push) "发送文件" else "拉取文件")
-                    }
+                }
+            } else {
+                items(uiState.entries, key = { it.path }) { entry ->
+                    RemoteFileCard(
+                        entry = entry,
+                        onOpenEntry = onOpenEntry,
+                        onDownloadEntry = onDownloadEntry,
+                        onDeleteEntry = onDeleteEntry,
+                    )
+                }
+            }
+        }
+    }
+
+    DeleteConfirmDialog(
+        entry = uiState.pendingDelete,
+        onDismiss = onCancelDelete,
+        onConfirm = onConfirmDelete,
+    )
+    NewFolderDialog(
+        visible = uiState.newFolderDialogVisible,
+        onDismiss = onDismissNewFolder,
+        onCreate = onCreateFolder,
+    )
+}
+
+@Composable
+private fun PathCard(
+    uiState: FileTransferUiState,
+    onPathChanged: (String) -> Unit,
+    onJumpClick: () -> Unit,
+    onGoUpClick: () -> Unit,
+    onUploadClick: () -> Unit,
+    onNewFolderClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppDimens.CardRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(
+            modifier = Modifier.padding(AppDimens.CardPadding),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SectionHeader(title = "当前位置", description = "目录路径需要以 / 开头")
+            OutlinedTextField(
+                value = uiState.pathInput,
+                onValueChange = onPathChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("设备目录") },
+                singleLine = true,
+                isError = uiState.pathError != null,
+                supportingText = { Text(uiState.pathError ?: "例如 /sdcard/Download") },
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = onGoUpClick,
+                    enabled = uiState.canGoUp && !uiState.loading,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("上级")
+                }
+                Button(
+                    onClick = onJumpClick,
+                    enabled = !uiState.loading,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("跳转")
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onUploadClick, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.UploadFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("上传")
+                }
+                OutlinedButton(onClick = onNewFolderClick, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.CreateNewFolder, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("新建文件夹")
                 }
             }
         }
@@ -182,11 +269,81 @@ private fun FileTransferContent(
 }
 
 @Composable
-private fun FileTransferStatus(status: OperationStatus) {
+private fun RemoteFileCard(
+    entry: RemoteFileEntry,
+    onOpenEntry: (RemoteFileEntry) -> Unit,
+    onDownloadEntry: (RemoteFileEntry) -> Unit,
+    onDeleteEntry: (RemoteFileEntry) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Card(
+        onClick = { onOpenEntry(entry) },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppDimens.CardRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 62.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (entry.isDirectory) Icons.Outlined.Folder else Icons.Outlined.InsertDriveFile,
+                contentDescription = null,
+                tint = if (entry.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (entry.isDirectory) "文件夹" else formatBytes(entry.sizeBytes),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Outlined.MoreVert, contentDescription = "文件操作")
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    if (!entry.isDirectory) {
+                        DropdownMenuItem(
+                            text = { Text("下载") },
+                            leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
+                            onClick = {
+                                expanded = false
+                                onDownloadEntry(entry)
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("删除") },
+                        leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                        onClick = {
+                            expanded = false
+                            onDeleteEntry(entry)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileManagerStatus(status: OperationStatus, loading: Boolean) {
     when (status) {
         OperationStatus.Idle -> Unit
         is OperationStatus.Running -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            if (loading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             Text(status.text, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         is OperationStatus.Success -> Text(status.text, color = MaterialTheme.colorScheme.primary)
@@ -197,41 +354,80 @@ private fun FileTransferStatus(status: OperationStatus) {
     }
 }
 
-@Preview(name = "文件传输 - 发送", showBackground = true, widthDp = 390)
 @Composable
-private fun FileTransferPushPreview() {
-    AdbManagerTheme(dynamicColor = false) {
-        FileTransferContent(
-            uiState = FileTransferUiState(
-                selectedLocalName = "config.json",
-                actionEnabled = true,
-            ),
-            onBackClick = {},
-            onModeChanged = {},
-            onRemotePathChanged = {},
-            onPickFileClick = {},
-            onPushClick = {},
-            onPullClick = {},
-        )
-    }
+private fun DeleteConfirmDialog(
+    entry: RemoteFileEntry?,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    if (entry == null) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("删除 ${entry.name}？") },
+        text = { Text(if (entry.isDirectory) "仅支持删除空文件夹。" else "该操作会从目标设备删除此文件。") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("删除") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
 }
 
-@Preview(name = "文件传输 - 拉取", showBackground = true, widthDp = 390)
 @Composable
-private fun FileTransferPullPreview() {
+private fun NewFolderDialog(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit,
+) {
+    if (!visible) return
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("新建文件夹") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("文件夹名称") },
+                singleLine = true,
+            )
+        },
+        confirmButton = { TextButton(onClick = { onCreate(name) }) { Text("创建") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 B"
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return String.format(Locale.US, "%.1f KB", kb)
+    val mb = kb / 1024.0
+    return String.format(Locale.US, "%.1f MB", mb)
+}
+
+@Preview(name = "文件管理", showBackground = true, widthDp = 390)
+@Composable
+private fun FileManagerContentPreview() {
     AdbManagerTheme(dynamicColor = false) {
-        FileTransferContent(
+        FileManagerContent(
             uiState = FileTransferUiState(
-                mode = FileTransferMode.Pull,
-                remotePath = "/sdcard/Download/log.txt",
-                actionEnabled = true,
+                entries = listOf(
+                    RemoteFileEntry("Pictures", "/sdcard/Download/Pictures", true, 0L),
+                    RemoteFileEntry("config.json", "/sdcard/Download/config.json", false, 2048L),
+                ),
             ),
             onBackClick = {},
-            onModeChanged = {},
-            onRemotePathChanged = {},
-            onPickFileClick = {},
-            onPushClick = {},
-            onPullClick = {},
+            onRefreshClick = {},
+            onPathChanged = {},
+            onJumpClick = {},
+            onGoUpClick = {},
+            onUploadClick = {},
+            onNewFolderClick = {},
+            onOpenEntry = {},
+            onDownloadEntry = {},
+            onDeleteEntry = {},
+            onCancelDelete = {},
+            onConfirmDelete = {},
+            onDismissNewFolder = {},
+            onCreateFolder = {},
         )
     }
 }

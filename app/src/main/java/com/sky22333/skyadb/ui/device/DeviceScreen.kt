@@ -273,7 +273,7 @@ private fun QuickActionGrid(
         "本机应用" to Icons.Outlined.Apps,
         "安装 APK" to Icons.Outlined.Android,
         "在线下载" to Icons.Outlined.Download,
-        "文件传输" to Icons.Outlined.FolderOpen,
+        "文件管理" to Icons.Outlined.FolderOpen,
         "Shell" to Icons.Outlined.Code,
         "截图" to Icons.Outlined.PhotoCamera,
     )
@@ -288,7 +288,7 @@ private fun QuickActionGrid(
                     "本机应用" -> onLocalAppsClick
                     "安装 APK" -> onInstallClick
                     "在线下载" -> onDownloadClick
-                    "文件传输" -> onFilesClick
+                    "文件管理" -> onFilesClick
                     "Shell" -> onShellClick
                     "截图" -> onScreenshotClick
                     else -> ({})
