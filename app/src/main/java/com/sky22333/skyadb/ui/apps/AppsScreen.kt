@@ -3,6 +3,7 @@ package com.sky22333.skyadb.ui.apps
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.model.AppInfo
@@ -60,6 +62,7 @@ import com.sky22333.skyadb.ui.theme.AppDimens
 
 @Composable
 fun AppsScreen(
+    bottomPadding: Dp = 0.dp,
     onBackClick: () -> Unit,
     viewModel: AppsViewModel = viewModel(),
 ) {
@@ -70,6 +73,7 @@ fun AppsScreen(
     }
 
     AppsContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onBackClick = onBackClick,
         onQueryChanged = viewModel::onQueryChanged,
@@ -86,6 +90,7 @@ fun AppsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AppsContent(
+    bottomPadding: Dp = 0.dp,
     uiState: AppsUiState,
     onBackClick: () -> Unit,
     onQueryChanged: (String) -> Unit,
@@ -122,9 +127,13 @@ private fun AppsContent(
         )
 
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(AppDimens.ScreenPadding),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = AppDimens.ScreenPadding,
+                top = AppDimens.ScreenPadding,
+                end = AppDimens.ScreenPadding,
+                bottom = AppDimens.ScreenPadding + bottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             item {

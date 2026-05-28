@@ -30,7 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,6 +57,7 @@ import com.sky22333.skyadb.ui.theme.AdbManagerTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    bottomPadding: Dp = 0.dp,
     onPairingClick: () -> Unit = {},
     onDiscoveryClick: () -> Unit = {},
     discoveredHost: String = "",
@@ -89,7 +91,12 @@ fun HomeScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(AppDimens.ScreenPadding),
+            contentPadding = PaddingValues(
+                start = AppDimens.ScreenPadding,
+                top = AppDimens.ScreenPadding,
+                end = AppDimens.ScreenPadding,
+                bottom = AppDimens.ScreenPadding + bottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             item {

@@ -27,12 +27,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.model.OperationStatus
@@ -42,6 +43,7 @@ import com.sky22333.skyadb.ui.theme.AppDimens
 
 @Composable
 fun InstallApkScreen(
+    bottomPadding: Dp = 0.dp,
     onBackClick: () -> Unit,
     viewModel: InstallApkViewModel = viewModel(),
 ) {
@@ -51,6 +53,7 @@ fun InstallApkScreen(
     }
 
     InstallApkContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onBackClick = onBackClick,
         onPickClick = { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream")) },
@@ -61,6 +64,7 @@ fun InstallApkScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun InstallApkContent(
+    bottomPadding: Dp = 0.dp,
     uiState: InstallApkUiState,
     onBackClick: () -> Unit,
     onPickClick: () -> Unit,
@@ -92,7 +96,12 @@ private fun InstallApkContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(AppDimens.ScreenPadding),
+                .padding(
+                    start = AppDimens.ScreenPadding,
+                    top = AppDimens.ScreenPadding,
+                    end = AppDimens.ScreenPadding,
+                    bottom = AppDimens.ScreenPadding + bottomPadding,
+                ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             Card(

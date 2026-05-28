@@ -27,7 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.data.ThemeMode
@@ -45,11 +46,13 @@ import com.sky22333.skyadb.ui.theme.AdbManagerTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    bottomPadding: Dp = 0.dp,
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     SettingsContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onDefaultPortChanged = viewModel::onDefaultPortChanged,
         onConnectionTimeoutChanged = viewModel::onConnectionTimeoutChanged,
@@ -63,6 +66,7 @@ fun SettingsScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsContent(
+    bottomPadding: Dp = 0.dp,
     uiState: SettingsUiState,
     onDefaultPortChanged: (String) -> Unit,
     onConnectionTimeoutChanged: (String) -> Unit,
@@ -78,7 +82,12 @@ private fun SettingsContent(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = AppDimens.ScreenPadding, vertical = 14.dp),
+            contentPadding = PaddingValues(
+                start = AppDimens.ScreenPadding,
+                top = 14.dp,
+                end = AppDimens.ScreenPadding,
+                bottom = 14.dp + bottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item { SectionHeader(title = "连接参数", description = "修改后自动保存到本机") }
@@ -150,7 +159,7 @@ private fun SettingsContent(
                 ProjectLinkItem(
                     icon = Icons.AutoMirrored.Outlined.OpenInNew,
                     title = "项目地址",
-                    description = "skyadb",
+                    description = "sky22333/skyadb",
                     onClick = { uriHandler.openUri(ProjectUrl) },
                 )
             }

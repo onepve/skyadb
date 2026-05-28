@@ -29,12 +29,13 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.download.DownloadState
@@ -46,12 +47,14 @@ import com.sky22333.skyadb.ui.theme.AppDimens
 
 @Composable
 fun OnlineDownloadScreen(
+    bottomPadding: Dp = 0.dp,
     onBackClick: () -> Unit,
     viewModel: OnlineDownloadViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     OnlineDownloadContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onBackClick = onBackClick,
         onModeChanged = viewModel::onModeChanged,
@@ -65,6 +68,7 @@ fun OnlineDownloadScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OnlineDownloadContent(
+    bottomPadding: Dp = 0.dp,
     uiState: OnlineDownloadUiState,
     onBackClick: () -> Unit,
     onModeChanged: (OnlineDownloadMode) -> Unit,
@@ -99,7 +103,12 @@ private fun OnlineDownloadContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(AppDimens.ScreenPadding),
+                .padding(
+                    start = AppDimens.ScreenPadding,
+                    top = AppDimens.ScreenPadding,
+                    end = AppDimens.ScreenPadding,
+                    bottom = AppDimens.ScreenPadding + bottomPadding,
+                ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             DownloadFormCard(

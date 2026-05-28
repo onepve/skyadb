@@ -2,6 +2,7 @@ package com.sky22333.skyadb.ui.discovery
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,7 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.discovery.AdbMdnsEndpoint
@@ -54,6 +56,7 @@ import com.sky22333.skyadb.ui.theme.AppDimens
 
 @Composable
 fun DeviceDiscoveryScreen(
+    bottomPadding: Dp = 0.dp,
     onBackClick: () -> Unit,
     onUseEndpoint: (String, Int) -> Unit,
     onPairEndpoint: (String, Int) -> Unit,
@@ -62,6 +65,7 @@ fun DeviceDiscoveryScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     DeviceDiscoveryContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onBackClick = onBackClick,
         onRefreshNetworkClick = viewModel::refreshNetwork,
@@ -75,6 +79,7 @@ fun DeviceDiscoveryScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceDiscoveryContent(
+    bottomPadding: Dp = 0.dp,
     uiState: DeviceDiscoveryUiState,
     onBackClick: () -> Unit,
     onRefreshNetworkClick: () -> Unit,
@@ -108,9 +113,13 @@ private fun DeviceDiscoveryContent(
         )
 
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(AppDimens.ScreenPadding),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = AppDimens.ScreenPadding,
+                top = AppDimens.ScreenPadding,
+                end = AppDimens.ScreenPadding,
+                bottom = AppDimens.ScreenPadding + bottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             item {

@@ -19,11 +19,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.UploadFile
@@ -42,7 +42,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.model.OperationStatus
@@ -68,6 +69,7 @@ import java.util.Locale
 
 @Composable
 fun FileTransferScreen(
+    bottomPadding: Dp = 0.dp,
     onBackClick: () -> Unit,
     viewModel: FileTransferViewModel = viewModel(),
 ) {
@@ -90,6 +92,7 @@ fun FileTransferScreen(
     }
 
     FileManagerContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onBackClick = onBackClick,
         onRefreshClick = viewModel::loadCurrentPath,
@@ -114,6 +117,7 @@ fun FileTransferScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FileManagerContent(
+    bottomPadding: Dp = 0.dp,
     uiState: FileTransferUiState,
     onBackClick: () -> Unit,
     onRefreshClick: () -> Unit,
@@ -156,7 +160,12 @@ private fun FileManagerContent(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(AppDimens.ScreenPadding),
+            contentPadding = PaddingValues(
+                start = AppDimens.ScreenPadding,
+                top = AppDimens.ScreenPadding,
+                end = AppDimens.ScreenPadding,
+                bottom = AppDimens.ScreenPadding + bottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             item {
@@ -291,7 +300,7 @@ private fun RemoteFileCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = if (entry.isDirectory) Icons.Outlined.Folder else Icons.Outlined.InsertDriveFile,
+                imageVector = if (entry.isDirectory) Icons.Outlined.Folder else Icons.AutoMirrored.Outlined.InsertDriveFile,
                 contentDescription = null,
                 tint = if (entry.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
             )

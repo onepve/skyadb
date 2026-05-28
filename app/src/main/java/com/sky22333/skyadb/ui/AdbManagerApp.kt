@@ -5,7 +5,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.calculateBottomPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.PhoneAndroid
@@ -87,10 +88,12 @@ fun AdbManagerApp() {
             }
         },
     ) { padding ->
+        val bottomPadding = padding.calculateBottomPadding()
+
         NavHost(
             navController = navController,
             startDestination = AppDestination.Home.route,
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.fillMaxSize(),
             enterTransition = {
                 fadeIn(animationSpec = tween(150)) +
                     slideInHorizontally(animationSpec = tween(150), initialOffsetX = { it / 14 })
@@ -121,6 +124,7 @@ fun AdbManagerApp() {
                 val discoveredHost by discoveredHostState
                 val discoveredPort by discoveredPortState
                 HomeScreen(
+                    bottomPadding = bottomPadding,
                     onPairingClick = { navController.navigate(AppDestination.Pairing.route) },
                     onDiscoveryClick = { navController.navigate(AppDestination.Discovery.route) },
                     discoveredHost = discoveredHost,
@@ -133,6 +137,7 @@ fun AdbManagerApp() {
             }
             composable(AppDestination.Device.route) {
                 DeviceScreen(
+                    bottomPadding = bottomPadding,
                     onAppsClick = { navController.navigate(AppDestination.Apps.route) },
                     onLocalAppsClick = { navController.navigate(AppDestination.LocalApps.route) },
                     onInstallClick = { navController.navigate(AppDestination.Install.route) },
@@ -142,7 +147,7 @@ fun AdbManagerApp() {
                     onShellClick = { navController.navigate(AppDestination.Shell.route) },
                 )
             }
-            composable(AppDestination.Settings.route) { SettingsScreen() }
+            composable(AppDestination.Settings.route) { SettingsScreen(bottomPadding = bottomPadding) }
             composable(AppDestination.Pairing.route) {
                 val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
                 val pairingHostState = savedStateHandle
@@ -156,6 +161,7 @@ fun AdbManagerApp() {
                 val pairingHost by pairingHostState
                 val pairingPort by pairingPortState
                 PairingScreen(
+                    bottomPadding = bottomPadding,
                     onBackClick = { navController.popBackStack() },
                     discoveredHost = pairingHost,
                     discoveredPort = pairingPort,
@@ -167,6 +173,7 @@ fun AdbManagerApp() {
             }
             composable(AppDestination.Discovery.route) {
                 DeviceDiscoveryScreen(
+                    bottomPadding = bottomPadding,
                     onBackClick = { navController.popBackStack() },
                     onUseEndpoint = { host, port ->
                         navController.previousBackStackEntry?.savedStateHandle?.set(DiscoveryHostKey, host)
@@ -181,25 +188,25 @@ fun AdbManagerApp() {
                 )
             }
             composable(AppDestination.Shell.route) {
-                ShellScreen(onBackClick = { navController.popBackStack() })
+                ShellScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
             composable(AppDestination.Apps.route) {
-                AppsScreen(onBackClick = { navController.popBackStack() })
+                AppsScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
             composable(AppDestination.LocalApps.route) {
-                LocalAppsScreen(onBackClick = { navController.popBackStack() })
+                LocalAppsScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
             composable(AppDestination.Download.route) {
-                OnlineDownloadScreen(onBackClick = { navController.popBackStack() })
+                OnlineDownloadScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
             composable(AppDestination.Install.route) {
-                InstallApkScreen(onBackClick = { navController.popBackStack() })
+                InstallApkScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
             composable(AppDestination.Files.route) {
-                FileTransferScreen(onBackClick = { navController.popBackStack() })
+                FileTransferScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
             composable(AppDestination.Screenshot.route) {
-                ScreenshotScreen(onBackClick = { navController.popBackStack() })
+                ScreenshotScreen(bottomPadding = bottomPadding, onBackClick = { navController.popBackStack() })
             }
         }
     }

@@ -27,7 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import com.sky22333.skyadb.ui.components.AppTopBar as TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sky22333.skyadb.model.ConnectionState
@@ -48,6 +49,7 @@ import com.sky22333.skyadb.ui.theme.AdbManagerTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceScreen(
+    bottomPadding: Dp = 0.dp,
     onAppsClick: () -> Unit = {},
     onLocalAppsClick: () -> Unit = {},
     onInstallClick: () -> Unit = {},
@@ -60,6 +62,7 @@ fun DeviceScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     DeviceContent(
+        bottomPadding = bottomPadding,
         uiState = uiState,
         onAppsClick = onAppsClick,
         onLocalAppsClick = onLocalAppsClick,
@@ -76,6 +79,7 @@ fun DeviceScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeviceContent(
+    bottomPadding: Dp = 0.dp,
     uiState: DeviceUiState,
     onAppsClick: () -> Unit,
     onLocalAppsClick: () -> Unit,
@@ -114,7 +118,12 @@ private fun DeviceContent(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(AppDimens.ScreenPadding),
+            contentPadding = PaddingValues(
+                start = AppDimens.ScreenPadding,
+                top = AppDimens.ScreenPadding,
+                end = AppDimens.ScreenPadding,
+                bottom = AppDimens.ScreenPadding + bottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(AppDimens.SectionGap),
         ) {
             item {
