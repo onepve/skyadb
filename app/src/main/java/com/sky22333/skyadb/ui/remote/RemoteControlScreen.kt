@@ -49,6 +49,9 @@ import com.sky22333.skyadb.ui.components.SectionHeader
 import com.sky22333.skyadb.ui.theme.AdbManagerTheme
 import com.sky22333.skyadb.ui.theme.AppDimens
 
+private val RemoteButtonSize = 72.dp
+private val RemoteCenterButtonSize = 82.dp
+
 @Composable
 fun RemoteControlScreen(
     bottomPadding: Dp = 0.dp,
@@ -103,13 +106,7 @@ private fun RemoteControlContent(
         ) {
             item { RemoteStatus(status = uiState.status) }
 
-            item {
-                SectionHeader(title = "方向键", description = "适合电视、盒子和无触控设备")
-            }
-
-            item { DpadCard(onKeyClick = onKeyClick) }
-
-            item { SectionHeader(title = "常用按键") }
+            item { SectionHeader(title = "常用操作") }
 
             item {
                 KeyGrid(
@@ -117,13 +114,21 @@ private fun RemoteControlContent(
                         KeyAction(RemoteKey.Back, Icons.AutoMirrored.Outlined.ArrowBack),
                         KeyAction(RemoteKey.Home, Icons.Outlined.Home),
                         KeyAction(RemoteKey.Menu, Icons.Outlined.Menu),
-                        KeyAction(RemoteKey.Power, Icons.Outlined.PowerSettingsNew),
                     ),
                     onKeyClick = onKeyClick,
                 )
             }
 
-            item { SectionHeader(title = "音量与媒体") }
+            item {
+                SectionHeader(
+                    title = "方向键",
+                    description = "适合电视、盒子和无触控设备",
+                )
+            }
+
+            item { DpadCard(onKeyClick = onKeyClick) }
+
+            item { SectionHeader(title = "音量控制") }
 
             item {
                 KeyGrid(
@@ -131,8 +136,18 @@ private fun RemoteControlContent(
                         KeyAction(RemoteKey.VolumeDown, Icons.AutoMirrored.Outlined.VolumeDown),
                         KeyAction(RemoteKey.VolumeUp, Icons.AutoMirrored.Outlined.VolumeUp),
                         KeyAction(RemoteKey.Mute, Icons.AutoMirrored.Outlined.VolumeOff),
-                        KeyAction(RemoteKey.PlayPause, Icons.Outlined.PlayArrow),
+                    ),
+                    onKeyClick = onKeyClick,
+                )
+            }
+
+            item { SectionHeader(title = "媒体控制") }
+
+            item {
+                KeyGrid(
+                    keys = listOf(
                         KeyAction(RemoteKey.Previous, Icons.AutoMirrored.Outlined.KeyboardArrowLeft),
+                        KeyAction(RemoteKey.PlayPause, Icons.Outlined.PlayArrow),
                         KeyAction(RemoteKey.Next, Icons.AutoMirrored.Outlined.KeyboardArrowRight),
                     ),
                     onKeyClick = onKeyClick,
@@ -146,6 +161,7 @@ private fun RemoteControlContent(
                     keys = listOf(
                         KeyAction(RemoteKey.Wakeup, Icons.Outlined.PowerSettingsNew),
                         KeyAction(RemoteKey.Sleep, Icons.Outlined.PowerSettingsNew),
+                        KeyAction(RemoteKey.Power, Icons.Outlined.PowerSettingsNew),
                     ),
                     onKeyClick = onKeyClick,
                 )
@@ -164,14 +180,20 @@ private fun DpadCard(onKeyClick: (RemoteKey) -> Unit) {
         ),
     ) {
         Column(
-            modifier = Modifier.padding(AppDimens.CardPadding),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppDimens.CardPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            RemoteIconButton(RemoteKey.Up, Icons.Outlined.KeyboardArrowUp, onKeyClick)
+            RemoteIconButton(
+                key = RemoteKey.Up,
+                icon = Icons.Outlined.KeyboardArrowUp,
+                onKeyClick = onKeyClick,
+            )
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RemoteIconButton(
@@ -182,9 +204,13 @@ private fun DpadCard(onKeyClick: (RemoteKey) -> Unit) {
 
                 Button(
                     onClick = { onKeyClick(RemoteKey.Center) },
-                    modifier = Modifier.size(76.dp),
+                    modifier = Modifier.size(RemoteCenterButtonSize),
+                    shape = RoundedCornerShape(28.dp),
                 ) {
-                    Text(RemoteKey.Center.label)
+                    Text(
+                        text = RemoteKey.Center.label,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
                 }
 
                 RemoteIconButton(
@@ -194,7 +220,11 @@ private fun DpadCard(onKeyClick: (RemoteKey) -> Unit) {
                 )
             }
 
-            RemoteIconButton(RemoteKey.Down, Icons.Outlined.KeyboardArrowDown, onKeyClick)
+            RemoteIconButton(
+                key = RemoteKey.Down,
+                icon = Icons.Outlined.KeyboardArrowDown,
+                onKeyClick = onKeyClick,
+            )
         }
     }
 }
@@ -217,7 +247,7 @@ private fun KeyGrid(
                     ) {
                         Icon(
                             imageVector = action.icon,
-                            contentDescription = null,
+                            contentDescription = action.key.label,
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -241,9 +271,14 @@ private fun RemoteIconButton(
 ) {
     OutlinedButton(
         onClick = { onKeyClick(key) },
-        modifier = Modifier.size(76.dp),
+        modifier = Modifier.size(RemoteButtonSize),
+        shape = RoundedCornerShape(24.dp),
     ) {
-        Icon(icon, contentDescription = key.label)
+        Icon(
+            imageVector = icon,
+            contentDescription = key.label,
+            modifier = Modifier.size(26.dp),
+        )
     }
 }
 
