@@ -47,3 +47,7 @@ sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 
 ### 鸣谢
 
 - [Kadb](https://github.com/flyfishxu/Kadb)
+
+
+## Star 趋势
+[![Star 趋势](https://starchart.cc/sky22333/skyadb.svg?variant=adaptive)](https://starchart.cc/sky22333/skyadb)
