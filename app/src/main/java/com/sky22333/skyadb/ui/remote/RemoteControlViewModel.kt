@@ -52,7 +52,7 @@ class RemoteControlViewModel(
                         state.value.copy(
                             status = OperationStatus.Failed(
                                 text = "按键发送失败",
-                                suggestion = result.data.errorOutput.ifBlank { "请确认目标设备仍保持连接。" },
+                                suggestion = result.data.errorOutput.toRemoteInputSuggestion(),
                             ),
                         )
                     }
@@ -64,5 +64,16 @@ class RemoteControlViewModel(
                 }
             }
         }
+    }
+}
+
+internal fun String.toRemoteInputSuggestion(): String {
+    return when {
+        contains("INJECT_EVENTS", ignoreCase = true) ||
+            contains("Injecting input events", ignoreCase = true) ->
+            "目标设备禁止 ADB 按键控制，请检查开发者选项中的安全调试设置。"
+        else -> lineSequence()
+            .firstOrNull { it.isNotBlank() }
+            ?: "请确认目标设备仍保持连接。"
     }
 }
