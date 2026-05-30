@@ -387,6 +387,7 @@ class KadbManager {
                     sourcePath = sourcePath,
                 )
             }
+            .toList()
     }
 
     private fun parsePackageNames(output: String): List<String> {

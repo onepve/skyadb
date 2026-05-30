@@ -372,9 +372,10 @@ private fun AppIconPlaceholder(app: AppInfo, iconPath: String?) {
         ),
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (iconBitmap != null) {
+            val bitmap = iconBitmap
+            if (bitmap != null) {
                 Image(
-                    bitmap = iconBitmap,
+                    bitmap = bitmap,
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
