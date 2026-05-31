@@ -10,3 +10,4 @@ app/build/
 *.keystore
 *.p12
 *.pfx
+/*.html

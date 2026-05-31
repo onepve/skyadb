@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +44,7 @@ import com.sky22333.skyadb.model.DeviceInfo
 import com.sky22333.skyadb.model.OperationStatus
 import com.sky22333.skyadb.ui.components.AppStatusBadge
 import com.sky22333.skyadb.ui.components.SectionHeader
+import com.sky22333.skyadb.ui.components.ToolActionCard
 import com.sky22333.skyadb.ui.theme.AppDimens
 import com.sky22333.skyadb.ui.theme.AdbManagerTheme
 
@@ -288,64 +290,44 @@ private fun QuickActionGrid(
     onLogsClick: () -> Unit,
 ) {
     val actions = listOf(
-        "应用管理" to Icons.Outlined.Apps,
-        "本机应用" to Icons.Outlined.Apps,
-        "安装 APK" to Icons.Outlined.Android,
-        "在线下载" to Icons.Outlined.Download,
-        "文件管理" to Icons.Outlined.FolderOpen,
-        "Shell" to Icons.Outlined.Code,
-        "遥控器" to Icons.Outlined.Android,
-        "系统日志" to Icons.Outlined.Code,
-        "截图" to Icons.Outlined.PhotoCamera,
+        QuickActionSpec("应用管理", Icons.Outlined.Apps, onAppsClick),
+        QuickActionSpec("本机应用", Icons.Outlined.Apps, onLocalAppsClick),
+        QuickActionSpec("安装 APK", Icons.Outlined.Android, onInstallClick),
+        QuickActionSpec("在线下载", Icons.Outlined.Download, onDownloadClick),
+        QuickActionSpec("文件管理", Icons.Outlined.FolderOpen, onFilesClick),
+        QuickActionSpec("Shell", Icons.Outlined.Code, onShellClick),
+        QuickActionSpec("遥控器", Icons.Outlined.Android, onRemoteClick),
+        QuickActionSpec("系统日志", Icons.Outlined.Code, onLogsClick),
+        QuickActionSpec("截图", Icons.Outlined.PhotoCamera, onScreenshotClick),
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        actions.forEach { (label, icon) ->
-            QuickAction(
-                label = label,
-                icon = icon,
-                onClick = when (label) {
-                    "应用管理" -> onAppsClick
-                    "本机应用" -> onLocalAppsClick
-                    "安装 APK" -> onInstallClick
-                    "在线下载" -> onDownloadClick
-                    "文件管理" -> onFilesClick
-                    "Shell" -> onShellClick
-                    "遥控器" -> onRemoteClick
-                    "系统日志" -> onLogsClick
-                    "截图" -> onScreenshotClick
-                    else -> ({})
-                },
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        actions.chunked(2).forEach { rowActions ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                rowActions.forEach { action ->
+                    ToolActionCard(
+                        title = action.label,
+                        icon = action.icon,
+                        onClick = action.onClick,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (rowActions.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
 
-@Composable
-private fun QuickAction(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(AppDimens.CardRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(AppDimens.CardPadding),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(imageVector = icon, contentDescription = null)
-            Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        }
-    }
-}
+private data class QuickActionSpec(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+)
 
 @Preview(name = "设备详情 - 未连接", showBackground = true, widthDp = 390)
 @Composable
