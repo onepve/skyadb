@@ -6,6 +6,8 @@ plugins {
 android {
     namespace = "com.sky22333.skyadb"
     compileSdk = 36
+    val ciVersionCode = providers.environmentVariable("VERSION_CODE").map { it.toInt() }.orNull
+    val ciVersionName = providers.environmentVariable("VERSION_NAME").orNull
     val signingStoreFile = providers.environmentVariable("SIGNING_STORE_FILE").orNull
     val keyAliasValue = providers.environmentVariable("KEY_ALIAS").orNull
     val keyStorePasswordValue = providers.environmentVariable("KEY_STORE_PASSWORD").orNull
@@ -19,8 +21,8 @@ android {
         applicationId = "com.sky22333.skyadb"
         minSdk = 23
         targetSdk = 36
-        versionCode = 10000
-        versionName = "1.0.0"
+        versionCode = ciVersionCode ?: 10000
+        versionName = ciVersionName ?: "1.0.0"
     }
 
     signingConfigs {
@@ -51,7 +53,6 @@ android {
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
-    implementation(platform(libs.koin.bom))
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.animation)
@@ -65,9 +66,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kadb)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
-    implementation(libs.koin.androidx.compose.navigation)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
     implementation(libs.timber)

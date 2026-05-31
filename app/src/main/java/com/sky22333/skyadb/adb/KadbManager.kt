@@ -334,11 +334,10 @@ class KadbManager {
                     )
                 }
                 localFile.parentFile?.mkdirs()
-                when (val pullResult = pull(remotePath, localFile)) {
-                    is AdbOperationResult.Success -> {
-                        shell("rm $remotePath")
-                        AdbOperationResult.Success(localFile)
-                    }
+                val pullResult = pull(remotePath, localFile)
+                shell("rm ${shellQuote(remotePath)}")
+                when (pullResult) {
+                    is AdbOperationResult.Success -> AdbOperationResult.Success(localFile)
                     is AdbOperationResult.Failure -> pullResult
                 }
             }

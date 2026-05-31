@@ -96,4 +96,10 @@ class ScreenshotViewModel(
         latestFile = null
         state.value = ScreenshotUiState()
     }
+
+    override fun onCleared() {
+        latestFile?.delete()
+        latestFile = null
+        super.onCleared()
+    }
 }

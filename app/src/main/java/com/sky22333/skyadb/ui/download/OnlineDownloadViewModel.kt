@@ -125,65 +125,69 @@ class OnlineDownloadViewModel(
         result: DownloadResult.Success,
     ) {
         val file = File(result.localPath)
-        when (form.mode) {
-            OnlineDownloadMode.InstallApk -> {
-                state.value = state.value.copy(
-                    task = state.value.task?.copy(
-                        fileName = result.fileName,
-                        localPath = result.localPath,
-                        state = DownloadState.Installing,
-                        progress = 1f,
-                        message = "下载完成，正在安装 APK",
-                    ),
-                    operationStatus = OperationStatus.Running("下载完成，正在安装 APK"),
-                )
-                when (val installResult = adbRepository.install(file)) {
-                    is AdbOperationResult.Success -> {
-                        state.value = state.value.copy(
-                            actionEnabled = true,
-                            task = state.value.task?.copy(state = DownloadState.Success, message = "APK 安装完成"),
-                            operationStatus = OperationStatus.Success("APK 安装完成"),
-                        )
+        try {
+            when (form.mode) {
+                OnlineDownloadMode.InstallApk -> {
+                    state.value = state.value.copy(
+                        task = state.value.task?.copy(
+                            fileName = result.fileName,
+                            localPath = result.localPath,
+                            state = DownloadState.Installing,
+                            progress = 1f,
+                            message = "下载完成，正在安装 APK",
+                        ),
+                        operationStatus = OperationStatus.Running("下载完成，正在安装 APK"),
+                    )
+                    when (val installResult = adbRepository.install(file)) {
+                        is AdbOperationResult.Success -> {
+                            state.value = state.value.copy(
+                                actionEnabled = true,
+                                task = state.value.task?.copy(state = DownloadState.Success, message = "APK 安装完成"),
+                                operationStatus = OperationStatus.Success("APK 安装完成"),
+                            )
+                        }
+                        is AdbOperationResult.Failure -> {
+                            state.value = state.value.copy(
+                                actionEnabled = true,
+                                task = state.value.task?.copy(state = DownloadState.Failed, message = installResult.message),
+                                operationStatus = OperationStatus.Failed(installResult.message, installResult.suggestion),
+                            )
+                        }
                     }
-                    is AdbOperationResult.Failure -> {
-                        state.value = state.value.copy(
-                            actionEnabled = true,
-                            task = state.value.task?.copy(state = DownloadState.Failed, message = installResult.message),
-                            operationStatus = OperationStatus.Failed(installResult.message, installResult.suggestion),
-                        )
+                }
+                OnlineDownloadMode.PushFile -> {
+                    val remotePath = form.targetPath.trimEnd('/') + "/" + result.fileName
+                    state.value = state.value.copy(
+                        task = state.value.task?.copy(
+                            fileName = result.fileName,
+                            localPath = result.localPath,
+                            targetPath = remotePath,
+                            state = DownloadState.Pushing,
+                            progress = 1f,
+                            message = "下载完成，正在推送文件",
+                        ),
+                        operationStatus = OperationStatus.Running("下载完成，正在推送文件"),
+                    )
+                    when (val pushResult = adbRepository.push(file, remotePath)) {
+                        is AdbOperationResult.Success -> {
+                            state.value = state.value.copy(
+                                actionEnabled = true,
+                                task = state.value.task?.copy(state = DownloadState.Success, message = "文件推送完成"),
+                                operationStatus = OperationStatus.Success("文件已推送到 $remotePath"),
+                            )
+                        }
+                        is AdbOperationResult.Failure -> {
+                            state.value = state.value.copy(
+                                actionEnabled = true,
+                                task = state.value.task?.copy(state = DownloadState.Failed, message = pushResult.message),
+                                operationStatus = OperationStatus.Failed(pushResult.message, pushResult.suggestion),
+                            )
+                        }
                     }
                 }
             }
-            OnlineDownloadMode.PushFile -> {
-                val remotePath = form.targetPath.trimEnd('/') + "/" + result.fileName
-                state.value = state.value.copy(
-                    task = state.value.task?.copy(
-                        fileName = result.fileName,
-                        localPath = result.localPath,
-                        targetPath = remotePath,
-                        state = DownloadState.Pushing,
-                        progress = 1f,
-                        message = "下载完成，正在推送文件",
-                    ),
-                    operationStatus = OperationStatus.Running("下载完成，正在推送文件"),
-                )
-                when (val pushResult = adbRepository.push(file, remotePath)) {
-                    is AdbOperationResult.Success -> {
-                        state.value = state.value.copy(
-                            actionEnabled = true,
-                            task = state.value.task?.copy(state = DownloadState.Success, message = "文件推送完成"),
-                            operationStatus = OperationStatus.Success("文件已推送到 $remotePath"),
-                        )
-                    }
-                    is AdbOperationResult.Failure -> {
-                        state.value = state.value.copy(
-                            actionEnabled = true,
-                            task = state.value.task?.copy(state = DownloadState.Failed, message = pushResult.message),
-                            operationStatus = OperationStatus.Failed(pushResult.message, pushResult.suggestion),
-                        )
-                    }
-                }
-            }
+        } finally {
+            file.delete()
         }
     }
 

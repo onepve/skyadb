@@ -47,7 +47,6 @@ sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 
 - Coroutines / Flow
 - DataStore
 - OkHttp
-- Koin
 
 
 ### 鸣谢

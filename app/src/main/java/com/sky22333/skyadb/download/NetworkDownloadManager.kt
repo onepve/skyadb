@@ -61,53 +61,60 @@ class NetworkDownloadManager(
                     ?: fileNameFromUrl(url)
                     ?: "download-${System.currentTimeMillis()}"
 
-                val targetFile = File(downloadDir(), fileName)
+                val downloadDir = downloadDir()
+                cleanupDownloadDir(downloadDir)
+                val targetFile = File(downloadDir, fileName)
                 targetFile.parentFile?.mkdirs()
 
                 val totalBytes = body.contentLength().takeIf { it > 0L } ?: -1L
                 var downloadedBytes = 0L
                 var lastProgressAt = 0L
 
-                body.byteStream().use { input ->
-                    targetFile.outputStream().use { output ->
-                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                        while (true) {
-                            ensureActive()
-                            if (canceled) {
-                                targetFile.delete()
-                                return@withContext DownloadResult.Canceled
-                            }
-                            val read = input.read(buffer)
-                            if (read == -1) break
-                            output.write(buffer, 0, read)
-                            downloadedBytes += read
+                try {
+                    body.byteStream().use { input ->
+                        targetFile.outputStream().use { output ->
+                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                            while (true) {
+                                ensureActive()
+                                if (canceled) {
+                                    targetFile.delete()
+                                    return@withContext DownloadResult.Canceled
+                                }
+                                val read = input.read(buffer)
+                                if (read == -1) break
+                                output.write(buffer, 0, read)
+                                downloadedBytes += read
 
-                            val progress = if (totalBytes > 0L) {
-                                (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-                            val now = System.currentTimeMillis()
-                            if (now - lastProgressAt >= ProgressUpdateIntervalMillis) {
-                                lastProgressAt = now
-                                onProgress(
-                                    DownloadTask(
-                                        url = url,
-                                        fileName = fileName,
-                                        targetPath = "",
-                                        localPath = targetFile.absolutePath,
-                                        progress = progress,
-                                        state = DownloadState.Downloading,
-                                        message = if (totalBytes > 0L) {
-                                            "已下载 ${(progress * 100).toInt()}%"
-                                        } else {
-                                            "正在下载 ${formatBytes(downloadedBytes)}"
-                                        },
-                                    ),
-                                )
+                                val progress = if (totalBytes > 0L) {
+                                    (downloadedBytes.toFloat() / totalBytes).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                }
+                                val now = System.currentTimeMillis()
+                                if (now - lastProgressAt >= ProgressUpdateIntervalMillis) {
+                                    lastProgressAt = now
+                                    onProgress(
+                                        DownloadTask(
+                                            url = url,
+                                            fileName = fileName,
+                                            targetPath = "",
+                                            localPath = targetFile.absolutePath,
+                                            progress = progress,
+                                            state = DownloadState.Downloading,
+                                            message = if (totalBytes > 0L) {
+                                                "已下载 ${(progress * 100).toInt()}%"
+                                            } else {
+                                                "正在下载 ${formatBytes(downloadedBytes)}"
+                                            },
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
+                } catch (error: Throwable) {
+                    targetFile.delete()
+                    throw error
                 }
                 onProgress(
                     DownloadTask(
@@ -165,7 +172,16 @@ class NetworkDownloadManager(
         return String.format(Locale.US, "%.1f MB", mb)
     }
 
+    private fun cleanupDownloadDir(directory: File) {
+        directory.listFiles()
+            ?.filter { it.isFile }
+            ?.sortedByDescending { it.lastModified() }
+            ?.drop(MaxCachedDownloads)
+            ?.forEach { file -> runCatching { file.delete() } }
+    }
+
     private companion object {
         const val ProgressUpdateIntervalMillis = 150L
+        const val MaxCachedDownloads = 3
     }
 }

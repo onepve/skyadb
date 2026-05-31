@@ -1,10 +1,10 @@
-name: Android CI
+name: Android 正式版发布
 
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag"
+        description: "正式版本标签，例如 v1.0.0。"
         required: true
         default: "v1.0.0"
 
@@ -16,35 +16,35 @@ env:
 
 jobs:
   build:
-    name: Build and static check
+    name: 构建并发布正式版
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
     steps:
-      - name: Checkout
+      - name: 拉取代码
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Set up JDK
+      - name: 配置 JDK
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
+      - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
+      - name: 安装 Android SDK 组件
         run: |
           sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Set up Gradle
+      - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.5.1"
 
-      - name: Decode release signing key
+      - name: 解码发布签名密钥
         env:
           SIGNING_KEY_BASE64: ${{ secrets.SIGNING_KEY_BASE64 }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -53,27 +53,43 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${SIGNING_KEY_BASE64}" || -z "${KEY_ALIAS}" || -z "${KEY_STORE_PASSWORD}" || -z "${KEY_PASSWORD}" ]]; then
-            echo "Release signing secrets are required: SIGNING_KEY_BASE64, KEY_ALIAS, KEY_STORE_PASSWORD, KEY_PASSWORD." >&2
+            echo "缺少发布签名密钥，请配置 SIGNING_KEY_BASE64、KEY_ALIAS、KEY_STORE_PASSWORD、KEY_PASSWORD。" >&2
             exit 1
           fi
           mkdir -p "${RUNNER_TEMP}/signing"
           echo "${SIGNING_KEY_BASE64}" | base64 --decode > "${RUNNER_TEMP}/signing/release.p12"
 
-      - name: Run unit tests
+      - name: 运行单元测试
         run: gradle --no-daemon testDebugUnitTest
 
-      - name: Run Android lint
+      - name: 运行 Android Lint
         run: gradle --no-daemon lintRelease
 
-      - name: Build release APK
+      - name: 构建 Release APK
         env:
+          VERSION_NAME: ${{ inputs.tag }}
           SIGNING_STORE_FILE: ${{ runner.temp }}/signing/release.p12
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle --no-daemon assembleRelease
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="$(echo "${VERSION_NAME}" | xargs)"
+          if [[ ! "${RELEASE_TAG}" =~ ^v ]]; then
+            echo "正式版本标签必须以 v 开头，例如 v1.0.0。" >&2
+            exit 1
+          fi
+          VERSION_NAME="${RELEASE_TAG#v}"
+          if [[ ! "${VERSION_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "版本标签必须是 v主版本.次版本.修订版本，例如 v1.0.0。" >&2
+            exit 1
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION_NAME}"
+          VERSION_CODE=$(((MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + 9))
+          export VERSION_NAME VERSION_CODE
+          gradle --no-daemon assembleRelease
 
-      - name: Publish release APK to GitHub Releases
+      - name: 发布正式版 APK 到 GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG_INPUT: ${{ inputs.tag }}
@@ -81,7 +97,7 @@ jobs:
           set -euo pipefail
           RELEASE_TAG="$(echo "${RELEASE_TAG_INPUT}" | xargs)"
           if [[ -z "${RELEASE_TAG}" ]]; then
-            echo "Release tag input is required." >&2
+            echo "版本标签不能为空。" >&2
             exit 1
           fi
           APK_PATH="$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)"
@@ -95,11 +111,11 @@ jobs:
           fi
           CHANGELOG="$(git log "${RANGE}" --no-merges --pretty=format:'%s%x09%h' | awk -F '\t' '!seen[$1]++ { printf "- %s (%s)\n", $1, $2 }' || true)"
           if [[ -z "${CHANGELOG}" ]]; then
-            CHANGELOG="- 本次发布未检测到新的提交记录。"
+            CHANGELOG="- 本次正式版未检测到新的提交记录。"
           fi
           RELEASE_NOTES="$(mktemp)"
           {
-            echo "## 更新记录"
+            echo "## 正式版更新记录"
             echo
             echo "${CHANGELOG}"
           } > "${RELEASE_NOTES}"

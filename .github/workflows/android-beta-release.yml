@@ -67,11 +67,29 @@ jobs:
 
       - name: 构建 Release APK
         env:
+          VERSION_NAME: ${{ inputs.tag }}
           SIGNING_STORE_FILE: ${{ runner.temp }}/signing/release.p12
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle --no-daemon assembleRelease
+        run: |
+          set -euo pipefail
+          BASE_TAG="$(echo "${VERSION_NAME}" | xargs)"
+          RELEASE_TAG="${BASE_TAG%-beta}-beta"
+          if [[ ! "${RELEASE_TAG}" =~ ^v ]]; then
+            echo "测试版标签必须以 v 开头，例如 v1.0.0-beta。" >&2
+            exit 1
+          fi
+          VERSION_NAME="${RELEASE_TAG#v}"
+          if [[ ! "${VERSION_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta$ ]]; then
+            echo "测试版标签必须是 v主版本.次版本.修订版本，流水线会自动追加 -beta，例如 v1.0.0-beta。" >&2
+            exit 1
+          fi
+          BASE_VERSION="${VERSION_NAME%-beta}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${BASE_VERSION}"
+          VERSION_CODE=$(((MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + 1))
+          export VERSION_NAME VERSION_CODE
+          gradle --no-daemon assembleRelease
 
       - name: 发布测试版 APK 到 GitHub Releases
         env:

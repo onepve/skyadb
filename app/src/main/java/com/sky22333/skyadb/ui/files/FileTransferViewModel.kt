@@ -88,18 +88,22 @@ class FileTransferViewModel(
             }.fold(
                 onSuccess = { (localFile, remotePath) ->
                     state.value = state.value.copy(operationStatus = OperationStatus.Running("正在上传到 $remotePath"))
-                    when (val result = adbRepository.push(localFile, remotePath)) {
-                        is AdbOperationResult.Success -> {
-                            state.value = state.value.copy(
-                                operationStatus = OperationStatus.Success("文件已上传到 $remotePath"),
-                            )
-                            loadPath(current.currentPath)
+                    try {
+                        when (val result = adbRepository.push(localFile, remotePath)) {
+                            is AdbOperationResult.Success -> {
+                                state.value = state.value.copy(
+                                    operationStatus = OperationStatus.Success("文件已上传到 $remotePath"),
+                                )
+                                loadPath(current.currentPath)
+                            }
+                            is AdbOperationResult.Failure -> {
+                                state.value = state.value.copy(
+                                    operationStatus = OperationStatus.Failed(result.message, result.suggestion),
+                                )
+                            }
                         }
-                        is AdbOperationResult.Failure -> {
-                            state.value = state.value.copy(
-                                operationStatus = OperationStatus.Failed(result.message, result.suggestion),
-                            )
-                        }
+                    } finally {
+                        localFile.delete()
                     }
                 },
                 onFailure = { error ->
@@ -226,24 +230,28 @@ class FileTransferViewModel(
     }
 
     private fun savePulledFile(context: Context, destinationUri: Uri, tempFile: File) {
-        runCatching {
-            context.contentResolver.openOutputStream(destinationUri).use { output ->
-                requireNotNull(output) { "无法打开保存位置" }
-                tempFile.inputStream().use { input -> input.copyTo(output) }
-            }
-        }.fold(
-            onSuccess = {
-                state.value = state.value.copy(operationStatus = OperationStatus.Success("文件已保存到选择的位置"))
-            },
-            onFailure = { error ->
-                state.value = state.value.copy(
-                    operationStatus = OperationStatus.Failed(
-                        text = "保存文件失败",
-                        suggestion = error.message ?: "请确认保存位置可写。",
-                    ),
-                )
-            },
-        )
+        try {
+            runCatching {
+                context.contentResolver.openOutputStream(destinationUri).use { output ->
+                    requireNotNull(output) { "无法打开保存位置" }
+                    tempFile.inputStream().use { input -> input.copyTo(output) }
+                }
+            }.fold(
+                onSuccess = {
+                    state.value = state.value.copy(operationStatus = OperationStatus.Success("文件已保存到选择的位置"))
+                },
+                onFailure = { error ->
+                    state.value = state.value.copy(
+                        operationStatus = OperationStatus.Failed(
+                            text = "保存文件失败",
+                            suggestion = error.message ?: "请确认保存位置可写。",
+                        ),
+                    )
+                },
+            )
+        } finally {
+            tempFile.delete()
+        }
     }
 
     private fun normalizePath(path: String): String {
