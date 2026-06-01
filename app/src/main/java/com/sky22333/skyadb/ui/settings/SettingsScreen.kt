@@ -7,19 +7,16 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SettingsEthernet
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -28,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -189,27 +185,18 @@ private fun SettingsContent(
                         icon = Icons.Outlined.BugReport,
                         title = "诊断日志",
                         description = "查看最近错误",
-                    ) {
-                        SettingActionChip(
-                            text = "查看日志",
-                            icon = Icons.Outlined.BugReport,
-                            onClick = onDiagnosticsClick,
-                        )
-                    }
+                        onClick = onDiagnosticsClick,
+                    )
                     SettingBlock(
                         icon = Icons.Outlined.CleaningServices,
                         title = "清理最近设备",
                         description = "移除连接历史",
+                        onClick = onClearRecentDevicesClicked,
                     ) {
                         Text(
                             text = uiState.statusText,
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodySmall,
-                        )
-                        SettingActionChip(
-                            text = "清理记录",
-                            icon = Icons.Outlined.DeleteSweep,
-                            onClick = onClearRecentDevicesClicked,
                         )
                     }
                 }
@@ -222,37 +209,12 @@ private fun SettingsContent(
                         icon = Icons.AutoMirrored.Outlined.OpenInNew,
                         title = "项目地址",
                         description = "sky22333/skyadb",
-                    ) {
-                        SettingActionChip(
-                            text = "打开项目",
-                            icon = Icons.AutoMirrored.Outlined.OpenInNew,
-                            onClick = { uriHandler.openUri(ProjectUrl) },
-                        )
-                    }
+                        onClick = { uriHandler.openUri(ProjectUrl) },
+                    )
                 }
             }
         }
     }
-}
-
-@Composable
-private fun SettingActionChip(
-    text: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-) {
-    FilterChip(
-        selected = false,
-        onClick = onClick,
-        label = { Text(text) },
-        leadingIcon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-        },
-    )
 }
 
 private const val ProjectUrl = "https://github.com/sky22333/skyadb"

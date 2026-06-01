@@ -1,6 +1,7 @@
 package com.sky22333.skyadb.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,9 +49,13 @@ fun SettingBlock(
     icon: ImageVector,
     title: String,
     description: String? = null,
-    content: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit = {},
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
