@@ -8,6 +8,8 @@ import com.sky22333.skyadb.download.DownloadResult
 import com.sky22333.skyadb.download.DownloadState
 import com.sky22333.skyadb.download.DownloadTask
 import com.sky22333.skyadb.download.NetworkDownloadManager
+import com.sky22333.skyadb.diagnostics.DiagnosticLogger
+import com.sky22333.skyadb.diagnostics.DiagnosticModule
 import com.sky22333.skyadb.model.AdbOperationResult
 import com.sky22333.skyadb.model.OperationStatus
 import com.sky22333.skyadb.repository.AdbRepository
@@ -93,6 +95,14 @@ class OnlineDownloadViewModel(
             when (result) {
                 is DownloadResult.Success -> handleDownloadedFile(current, result)
                 is DownloadResult.Failure -> {
+                    DiagnosticLogger.record(
+                        module = DiagnosticModule.Download,
+                        operation = "下载文件",
+                        target = current.url,
+                        message = result.message,
+                        suggestion = result.suggestion,
+                        cause = result.cause,
+                    )
                     state.value = state.value.copy(
                         actionEnabled = true,
                         operationStatus = OperationStatus.Failed(result.message, result.suggestion),

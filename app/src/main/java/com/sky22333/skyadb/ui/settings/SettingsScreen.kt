@@ -7,17 +7,16 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SettingsEthernet
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -29,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -38,13 +38,14 @@ import com.sky22333.skyadb.data.ThemeMode
 import com.sky22333.skyadb.ui.components.SectionHeader
 import com.sky22333.skyadb.ui.components.SettingBlock
 import com.sky22333.skyadb.ui.components.SettingGroupCard
-import com.sky22333.skyadb.ui.theme.AppDimens
 import com.sky22333.skyadb.ui.theme.AdbManagerTheme
+import com.sky22333.skyadb.ui.theme.AppDimens
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     bottomPadding: Dp = 0.dp,
+    onDiagnosticsClick: () -> Unit = {},
     viewModel: SettingsViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -58,10 +59,11 @@ fun SettingsScreen(
         onScanRangesChanged = viewModel::onScanRangesChanged,
         onThemeModeSelected = viewModel::onThemeModeSelected,
         onClearRecentDevicesClicked = viewModel::onClearRecentDevicesClicked,
+        onDiagnosticsClick = onDiagnosticsClick,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsContent(
     bottomPadding: Dp = 0.dp,
@@ -72,6 +74,7 @@ private fun SettingsContent(
     onScanRangesChanged: (String) -> Unit,
     onThemeModeSelected: (ThemeMode) -> Unit,
     onClearRecentDevicesClicked: () -> Unit,
+    onDiagnosticsClick: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
 
@@ -183,6 +186,17 @@ private fun SettingsContent(
             item {
                 SettingGroupCard {
                     SettingBlock(
+                        icon = Icons.Outlined.BugReport,
+                        title = "诊断日志",
+                        description = "查看最近错误",
+                    ) {
+                        SettingActionChip(
+                            text = "查看日志",
+                            icon = Icons.Outlined.BugReport,
+                            onClick = onDiagnosticsClick,
+                        )
+                    }
+                    SettingBlock(
                         icon = Icons.Outlined.CleaningServices,
                         title = "清理最近设备",
                         description = "移除连接历史",
@@ -192,17 +206,11 @@ private fun SettingsContent(
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        Button(onClick = onClearRecentDevicesClicked) {
-                            Icon(
-                                imageVector = Icons.Outlined.DeleteSweep,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                modifier = Modifier.padding(start = 8.dp),
-                                text = "清理最近设备",
-                            )
-                        }
+                        SettingActionChip(
+                            text = "清理记录",
+                            icon = Icons.Outlined.DeleteSweep,
+                            onClick = onClearRecentDevicesClicked,
+                        )
                     }
                 }
             }
@@ -215,22 +223,36 @@ private fun SettingsContent(
                         title = "项目地址",
                         description = "sky22333/skyadb",
                     ) {
-                        Button(onClick = { uriHandler.openUri(ProjectUrl) }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                modifier = Modifier.padding(start = 8.dp),
-                                text = "打开项目",
-                            )
-                        }
+                        SettingActionChip(
+                            text = "打开项目",
+                            icon = Icons.AutoMirrored.Outlined.OpenInNew,
+                            onClick = { uriHandler.openUri(ProjectUrl) },
+                        )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SettingActionChip(
+    text: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = false,
+        onClick = onClick,
+        label = { Text(text) },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+        },
+    )
 }
 
 private const val ProjectUrl = "https://github.com/sky22333/skyadb"
@@ -247,6 +269,7 @@ private fun SettingsContentPreview() {
             onScanRangesChanged = {},
             onThemeModeSelected = {},
             onClearRecentDevicesClicked = {},
+            onDiagnosticsClick = {},
         )
     }
 }

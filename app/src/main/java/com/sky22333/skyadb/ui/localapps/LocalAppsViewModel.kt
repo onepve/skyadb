@@ -3,6 +3,8 @@ package com.sky22333.skyadb.ui.localapps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sky22333.skyadb.AppServices
+import com.sky22333.skyadb.diagnostics.DiagnosticLogger
+import com.sky22333.skyadb.diagnostics.DiagnosticModule
 import com.sky22333.skyadb.localapps.LocalAppExporter
 import com.sky22333.skyadb.localapps.LocalInstalledApp
 import com.sky22333.skyadb.model.AdbOperationResult
@@ -57,6 +59,13 @@ class LocalAppsViewModel(
                 )
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
+                DiagnosticLogger.record(
+                    module = DiagnosticModule.Apps,
+                    operation = "读取本机应用",
+                    message = "读取本机应用失败",
+                    suggestion = error.message ?: "请确认系统允许读取已安装应用列表。",
+                    cause = error,
+                )
                 state.value = state.value.copy(
                     loading = false,
                     operationStatus = OperationStatus.Failed(
@@ -90,6 +99,14 @@ class LocalAppsViewModel(
                 exporter.exportSingleApk(app)
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
+                DiagnosticLogger.record(
+                    module = DiagnosticModule.Apps,
+                    operation = "导出本机应用",
+                    target = app.packageName,
+                    message = "导出应用失败",
+                    suggestion = error.message ?: "该应用安装包无法读取或已被系统限制。",
+                    cause = error,
+                )
                 state.value = state.value.copy(
                     operationStatus = OperationStatus.Failed(
                         text = "导出应用失败",
@@ -113,6 +130,14 @@ class LocalAppsViewModel(
                 }
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
+                DiagnosticLogger.record(
+                    module = DiagnosticModule.Install,
+                    operation = "安装本机应用",
+                    target = app.packageName,
+                    message = "安装应用失败",
+                    suggestion = error.message ?: "请确认目标设备仍保持连接，并允许安装该应用。",
+                    cause = error,
+                )
                 state.value = state.value.copy(
                     operationStatus = OperationStatus.Failed(
                         text = "安装应用失败",
