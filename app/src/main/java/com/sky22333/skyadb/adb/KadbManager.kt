@@ -34,6 +34,14 @@ class KadbManager {
             activeEndpoint = "$host:$port"
             AdbOperationResult.Success(activeEndpoint.orEmpty())
         }.getOrElse { error ->
+            if (AdbIdentityManager.isRsaCrtError(error)) {
+                AdbIdentityManager.repairIdentity()
+                return@withContext AdbOperationResult.Failure(
+                    message = "ADB 身份密钥异常",
+                    suggestion = "当前系统的 RSA 私钥兼容性异常，已尝试重建 ADB 身份。请重新连接，并在目标设备上重新允许调试授权。",
+                    cause = error,
+                )
+            }
             AdbOperationResult.Failure(
                 message = "无法连接到设备",
                 suggestion = "请确认设备与本机处于同一网络、ADB 端口正确，并已允许调试授权。",
@@ -52,6 +60,14 @@ class KadbManager {
             Kadb.pair(host, port, pairingCode, name)
             AdbOperationResult.Success(Unit)
         }.getOrElse { error ->
+            if (AdbIdentityManager.isRsaCrtError(error)) {
+                AdbIdentityManager.repairIdentity()
+                return@withContext AdbOperationResult.Failure(
+                    message = "ADB 身份密钥异常",
+                    suggestion = "当前系统的 RSA 私钥兼容性异常，已尝试重建 ADB 身份。请重新配对，并在目标设备上重新允许调试授权。",
+                    cause = error,
+                )
+            }
             AdbOperationResult.Failure(
                 message = "无线调试配对失败",
                 suggestion = "请确认配对码未过期，配对 IP 和配对端口来自目标设备的配对窗口。",

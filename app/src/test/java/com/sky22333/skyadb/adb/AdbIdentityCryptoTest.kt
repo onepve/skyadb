@@ -40,6 +40,16 @@ class AdbIdentityCryptoTest {
         assertFalse("非 CRT 私钥", plain is RSAPrivateCrtKey)
     }
 
+    @Test
+    fun rsaCrtError_isDetectedThroughCauseChain() {
+        val error = IllegalStateException(
+            "connect failed",
+            IllegalArgumentException("Only RSA private keys with CRT parameters are supported"),
+        )
+
+        assertTrue(AdbIdentityManager.isRsaCrtError(error))
+    }
+
     private fun encodePrivateKeyPem(encoded: ByteArray): String {
         val base64 = Base64.getEncoder().encodeToString(encoded)
         return "-----BEGIN PRIVATE KEY-----\n$base64\n-----END PRIVATE KEY-----"

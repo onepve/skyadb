@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.bouncycastle.bcprov)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
+    implementation(libs.okio)
     implementation(libs.timber)
 
     testImplementation(libs.junit)
