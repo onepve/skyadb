@@ -24,6 +24,8 @@ class ScrcpyRepository(
         onStreamError: (Throwable) -> Unit = {},
     ): AdbOperationResult<ScrcpyDeviceInfo> = withContext(Dispatchers.IO) {
         stop()
+        val options = qualityPreset.options
+        val optionsText = options.diagnosticText()
         val kadb = kadbManager.createStreamingClient()
             ?: return@withContext AdbOperationResult.Failure(
                 message = "未连接设备",
@@ -35,15 +37,15 @@ class ScrcpyRepository(
                 context = context,
                 kadb = kadb,
                 surface = surface,
-                options = qualityPreset.options,
+                options = options,
                 onVideoSize = onVideoSize,
-                onError = { error ->
+                onError = { error, serverLog ->
                     DiagnosticLogger.record(
                         module = DiagnosticModule.Mirror,
                         operation = "视频流",
                         target = kadbManager.currentEndpoint(),
                         message = "屏幕镜像视频流异常",
-                        suggestion = "当前画质：${qualityPreset.label}。请重新进入屏幕镜像；如果持续失败，请切换到流畅画质。",
+                        suggestion = mirrorDiagnosticSuggestion(qualityPreset, optionsText, serverLog),
                         cause = error,
                     )
                     stop()
@@ -58,7 +60,7 @@ class ScrcpyRepository(
                     operation = "启动镜像",
                     target = kadbManager.currentEndpoint(),
                     message = "屏幕镜像启动失败",
-                    suggestion = "当前画质：${qualityPreset.label}。请确认设备已授权 ADB；如果持续失败，请切换到流畅画质。",
+                    suggestion = mirrorDiagnosticSuggestion(qualityPreset, optionsText),
                     cause = error,
                 )
                 AdbOperationResult.Failure(
@@ -127,5 +129,22 @@ class ScrcpyRepository(
                 )
             }
         session = null
+    }
+
+    private fun mirrorDiagnosticSuggestion(
+        qualityPreset: MirrorQualityPreset,
+        optionsText: String,
+        serverLog: String = "",
+    ): String {
+        val base = "当前画质：${qualityPreset.label}。启动参数：$optionsText。请重新进入屏幕镜像；如果持续失败，请切换到流畅画质。"
+        return if (serverLog.isBlank()) {
+            base
+        } else {
+            "$base\nscrcpy server 日志：\n${serverLog.take(ServerLogDiagnosticMaxChars)}"
+        }
+    }
+
+    private companion object {
+        const val ServerLogDiagnosticMaxChars = 300
     }
 }

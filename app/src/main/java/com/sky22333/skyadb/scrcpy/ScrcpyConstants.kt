@@ -15,7 +15,11 @@ data class ScrcpyOptions(
     val maxSize: Int = ScrcpyConstants.DefaultMaxSize,
     val maxFps: Int = ScrcpyConstants.DefaultMaxFps,
     val videoBitRate: Int = ScrcpyConstants.DefaultVideoBitRate,
-)
+) {
+    fun diagnosticText(): String {
+        return "max_size=$maxSize, max_fps=$maxFps, video_bit_rate=$videoBitRate"
+    }
+}
 
 data class ScrcpyDeviceInfo(
     val name: String,

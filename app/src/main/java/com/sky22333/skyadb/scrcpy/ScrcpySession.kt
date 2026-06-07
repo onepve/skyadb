@@ -25,13 +25,13 @@ class ScrcpySession private constructor(
     private val decoder: ScrcpyVideoDecoder,
     private val scope: CoroutineScope,
     private val logLines: ArrayDeque<String>,
-    private val onError: (Throwable) -> Unit,
+    private val onError: (Throwable, String) -> Unit,
 ) {
     fun start() {
         scope.launch { readServerLogs() }
         scope.launch {
             runCatching { decoder.start() }
-                .onFailure(onError)
+                .onFailure { error -> onError(error, serverLogTail(maxLines = 20)) }
         }
     }
 
@@ -73,7 +73,7 @@ class ScrcpySession private constructor(
             surface: Surface,
             options: ScrcpyOptions = ScrcpyOptions(),
             onVideoSize: (Int, Int) -> Unit,
-            onError: (Throwable) -> Unit,
+            onError: (Throwable, String) -> Unit,
         ): ScrcpySession = withContext(Dispatchers.IO) {
             val serverManager = ScrcpyServerManager(context)
             val logs = ArrayDeque<String>()

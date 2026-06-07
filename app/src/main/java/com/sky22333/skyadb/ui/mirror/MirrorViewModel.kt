@@ -17,6 +17,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -51,10 +52,13 @@ class MirrorViewModel(
         started = true
         state.value = state.value.copy(status = OperationStatus.Running("正在启动屏幕镜像"))
         viewModelScope.launch {
+            val qualityPreset = settingsStore.settings.first().mirrorQualityPreset
+            if (!started || !surface.isValid) return@launch
+            state.value = state.value.copy(qualityPreset = qualityPreset)
             when (
                 val result = repository.start(
                     surface = surface,
-                    qualityPreset = state.value.qualityPreset,
+                    qualityPreset = qualityPreset,
                     onVideoSize = { width, height ->
                         state.value = state.value.copy(videoWidth = width, videoHeight = height)
                     },
