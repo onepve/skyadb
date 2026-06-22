@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.sky22333.skyadb"
-    compileSdk = 36
+    compileSdk = 37
     val ciVersionCode = providers.environmentVariable("VERSION_CODE").map { it.toInt() }.orNull
     val ciVersionName = providers.environmentVariable("VERSION_NAME").orNull
     val signingStoreFile = providers.environmentVariable("SIGNING_STORE_FILE").orNull
@@ -20,7 +20,7 @@ android {
     defaultConfig {
         applicationId = "com.sky22333.skyadb"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = ciVersionCode ?: 10000
         versionName = ciVersionName ?: "1.0.0"
     }
