@@ -242,12 +242,6 @@
     <!-- Remote control screen -->
     <string name="remote_title">Virtual remote</string>
     <string name="remote_subtitle">Send physical key events to the target device</string>
-    <string name="remote_common_actions">Common actions</string>
-    <string name="remote_dpad_title">D-pad</string>
-    <string name="remote_dpad_desc">Suited for TVs, boxes, and touch-free devices</string>
-    <string name="remote_volume_title">Volume control</string>
-    <string name="remote_media_title">Media control</string>
-    <string name="remote_power_title">Power</string>
 
     <!-- Mirror screen -->
     <string name="mirror_hide_controls_desc">Hide controls</string>

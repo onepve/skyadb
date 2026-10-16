@@ -285,7 +285,7 @@ private fun MirrorControls(
                 }
                 MirrorIconButton(
                     Icons.Outlined.PowerSettingsNew,
-                    stringResource(R.string.remote_power_title),
+                    stringResource(R.string.remote_key_power),
                 ) {
                     onKey(KeyEvent.KEYCODE_POWER)
                 }

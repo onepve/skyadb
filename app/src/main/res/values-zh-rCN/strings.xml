@@ -242,12 +242,6 @@
     <!-- Remote control screen -->
     <string name="remote_title">虚拟遥控器</string>
     <string name="remote_subtitle">发送物理按键到目标设备</string>
-    <string name="remote_common_actions">常用操作</string>
-    <string name="remote_dpad_title">方向键</string>
-    <string name="remote_dpad_desc">适合电视、盒子和无触控设备</string>
-    <string name="remote_volume_title">音量控制</string>
-    <string name="remote_media_title">媒体控制</string>
-    <string name="remote_power_title">电源</string>
 
     <!-- Mirror screen -->
     <string name="mirror_hide_controls_desc">隐藏控制区</string>
@@ -666,7 +660,7 @@
     <string name="remote_key_down">下</string>
     <string name="remote_key_left">左</string>
     <string name="remote_key_right">右</string>
-    <string name="remote_key_center">确认</string>
+    <string name="remote_key_center">OK</string>
     <string name="remote_key_volume_up">音量+</string>
     <string name="remote_key_volume_down">音量-</string>
     <string name="remote_key_mute">静音</string>
