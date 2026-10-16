@@ -6,6 +6,7 @@ sealed interface AdbOperationResult<out T> {
         val message: String,
         val suggestion: String,
         val cause: Throwable? = null,
+        val output: String? = null,
     ) : AdbOperationResult<Nothing>
 }
 

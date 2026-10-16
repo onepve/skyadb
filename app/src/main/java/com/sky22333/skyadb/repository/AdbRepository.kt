@@ -16,6 +16,7 @@ import com.sky22333.skyadb.model.AppInfo
 import com.sky22333.skyadb.model.ConnectionState
 import com.sky22333.skyadb.model.DeviceInfo
 import com.sky22333.skyadb.model.DeviceType
+import com.sky22333.skyadb.model.FastbootDeviceSummary
 import com.sky22333.skyadb.model.RemoteFileEntry
 import com.sky22333.skyadb.model.ShellCommandResult
 import com.sky22333.skyadb.usb.UsbOtgHost
@@ -23,6 +24,7 @@ import com.sky22333.skyadb.usb.UsbOtgMode
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 interface AdbRepository {
     val recentDevices: Flow<List<AdbDevice>>
@@ -41,6 +44,8 @@ interface AdbRepository {
     suspend fun connectUsbOtg(deviceName: String): AdbOperationResult<String>
 
     suspend fun runFastbootCommand(command: String): AdbOperationResult<String>
+
+    suspend fun fastbootSummary(): AdbOperationResult<FastbootDeviceSummary>
 
     suspend fun pair(host: String, port: Int, pairingCode: String): AdbOperationResult<Unit>
 
@@ -244,16 +249,39 @@ class DefaultAdbRepository(
             return@withLock result.logFailure(DiagnosticModule.UsbOtg, "USB OTG 连接", deviceName)
         }
 
-    override suspend fun runFastbootCommand(command: String): AdbOperationResult<String> {
-        if (kadbManager.sessionKind() != AdbSessionKind.UsbFastboot) {
-            return AdbOperationResult.Failure(
-                message = appString(R.string.repo_not_fastboot),
-                suggestion = appString(R.string.fastboot_connect_via_usb_otg_suggestion),
-            )
+    override suspend fun runFastbootCommand(command: String): AdbOperationResult<String> =
+        connectionMutex.withLock {
+            if (kadbManager.sessionKind() != AdbSessionKind.UsbFastboot) {
+                return@withLock AdbOperationResult.Failure(
+                    message = appString(R.string.repo_not_fastboot),
+                    suggestion = appString(R.string.fastboot_connect_via_usb_otg_suggestion),
+                )
+            }
+            try {
+                fastbootOtgManager
+                    .sendCommand(command)
+                    .logFailure(DiagnosticModule.Fastboot, "Fastboot 命令", command.take(80))
+            } finally {
+                clearClosedFastbootSession()
+            }
         }
-        return fastbootOtgManager
-            .sendCommand(command)
-            .logFailure(DiagnosticModule.Fastboot, "Fastboot 命令", command.take(80))
+
+    override suspend fun fastbootSummary(): AdbOperationResult<FastbootDeviceSummary> =
+        connectionMutex.withLock {
+            try {
+                fastbootOtgManager.readSummary().logFailure(DiagnosticModule.Fastboot, "读取设备摘要")
+            } finally {
+                clearClosedFastbootSession()
+            }
+        }
+
+    private suspend fun clearClosedFastbootSession() {
+        if (
+            kadbManager.sessionKind() == AdbSessionKind.UsbFastboot &&
+                fastbootOtgManager.currentDeviceName() == null
+        ) {
+            withContext(NonCancellable) { disconnectLocked() }
+        }
     }
 
     override suspend fun pair(

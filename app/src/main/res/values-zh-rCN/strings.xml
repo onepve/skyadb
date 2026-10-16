@@ -204,6 +204,26 @@
     <string name="shell_command_label">Shell 命令</string>
     <string name="shell_command_placeholder">例如 getprop ro.product.model</string>
     <string name="fastboot_console_title">Fastboot 命令</string>
+    <string name="fastboot_summary_title">设备摘要</string>
+    <string name="fastboot_connected">Fastboot 已连接</string>
+    <string name="fastboot_refresh_summary">刷新设备摘要</string>
+    <string name="fastboot_copy_summary">复制设备摘要</string>
+    <string name="fastboot_summary_failed">读取设备摘要失败</string>
+    <string name="fastboot_not_provided">设备未提供</string>
+    <string name="fastboot_product">产品型号</string>
+    <string name="fastboot_serial">序列号</string>
+    <string name="fastboot_bootloader_version">Bootloader 版本</string>
+    <string name="fastboot_slot">当前槽位</string>
+    <string name="fastboot_mode">运行模式</string>
+    <string name="fastboot_reboot_to">重启到</string>
+    <string name="fastboot_reboot_system">正常系统</string>
+    <string name="fastboot_reboot_bootloader">Bootloader</string>
+    <string name="fastboot_reboot_recovery">Recovery</string>
+    <string name="fastboot_reboot_fastbootd">fastbootd</string>
+    <string name="fastboot_reboot_sent">重启指令已确认，设备切换模式后请在首页重新连接。</string>
+    <string name="fastboot_command_done">Fastboot 命令执行完成</string>
+    <string name="command_copy_result">复制结果</string>
+    <string name="command_result_copied">已复制结果</string>
     <string name="fastboot_command_placeholder">例如 fastboot getvar product</string>
     <string name="adb_command_input_hint">可直接输入 Shell 命令，也可粘贴带 adb shell 前缀的命令。</string>
     <string name="fastboot_command_input_hint">支持 fastboot getvar product 或 getvar:product。</string>
@@ -355,11 +375,8 @@
     <string name="fastboot_connect_failed">Fastboot 连接失败</string>
     <string name="fastboot_connect_failed_suggestion">请确认目标设备处于 Fastboot 模式，OTG 线稳固，并已授权 USB 访问。</string>
     <string name="fastboot_not_connected">未连接 Fastboot 设备</string>
-    <string name="fastboot_command_empty">Fastboot 命令为空</string>
-    <string name="fastboot_command_empty_suggestion">请输入有效的 Fastboot 命令，例如 getvar:product。</string>
     <string name="fastboot_command_failed">Fastboot 命令执行失败</string>
     <string name="fastboot_command_failed_suggestion">请确认命令格式正确，且设备仍处于 Fastboot 模式。</string>
-    <string name="fastboot_invalid_response_error">未收到有效的 Fastboot 响应（%1$s）</string>
 
     <!-- AdbRepository -->
     <string name="repo_usb_device_disconnected">USB 设备已断开</string>

@@ -204,6 +204,26 @@
     <string name="shell_command_label">Shell command</string>
     <string name="shell_command_placeholder">e.g. getprop ro.product.model</string>
     <string name="fastboot_console_title">Fastboot commands</string>
+    <string name="fastboot_summary_title">Device summary</string>
+    <string name="fastboot_connected">Fastboot connected</string>
+    <string name="fastboot_refresh_summary">Refresh device summary</string>
+    <string name="fastboot_copy_summary">Copy device summary</string>
+    <string name="fastboot_summary_failed">Unable to read device summary</string>
+    <string name="fastboot_not_provided">Not provided</string>
+    <string name="fastboot_product">Product</string>
+    <string name="fastboot_serial">Serial number</string>
+    <string name="fastboot_bootloader_version">Bootloader version</string>
+    <string name="fastboot_slot">Active slot</string>
+    <string name="fastboot_mode">Mode</string>
+    <string name="fastboot_reboot_to">Reboot to</string>
+    <string name="fastboot_reboot_system">System</string>
+    <string name="fastboot_reboot_bootloader">Bootloader</string>
+    <string name="fastboot_reboot_recovery">Recovery</string>
+    <string name="fastboot_reboot_fastbootd">fastbootd</string>
+    <string name="fastboot_reboot_sent">Reboot command accepted. Reconnect from the home page after the device changes mode.</string>
+    <string name="fastboot_command_done">Fastboot command completed</string>
+    <string name="command_copy_result">Copy result</string>
+    <string name="command_result_copied">Result copied</string>
     <string name="fastboot_command_placeholder">e.g. fastboot getvar product</string>
     <string name="adb_command_input_hint">Accepts shell commands with or without the adb shell prefix.</string>
     <string name="fastboot_command_input_hint">Accepts fastboot getvar product or getvar:product.</string>
@@ -355,11 +375,8 @@
     <string name="fastboot_connect_failed">Fastboot connection failed</string>
     <string name="fastboot_connect_failed_suggestion">Make sure the target device is in Fastboot mode, the OTG cable is secure, and USB access is authorized.</string>
     <string name="fastboot_not_connected">No Fastboot device connected</string>
-    <string name="fastboot_command_empty">Fastboot command is empty</string>
-    <string name="fastboot_command_empty_suggestion">Enter a valid Fastboot command, e.g. getvar:product.</string>
     <string name="fastboot_command_failed">Fastboot command execution failed</string>
     <string name="fastboot_command_failed_suggestion">Make sure the command format is correct and the device is still in Fastboot mode.</string>
-    <string name="fastboot_invalid_response_error">Did not receive a valid Fastboot response (%1$s)</string>
 
     <!-- AdbRepository -->
     <string name="repo_usb_device_disconnected">USB device disconnected</string>

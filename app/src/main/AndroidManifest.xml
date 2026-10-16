@@ -45,6 +45,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenLayout|screenSize|smallestScreenSize|keyboardHidden"
             android:enableOnBackInvokedCallback="true"
             android:exported="true"

@@ -12,7 +12,7 @@ sky adb 是一款运行在 Android 手机上的支持简体中文和英文的 AD
 
 - 无线调试配对：输入配对 IP、配对端口、配对码后调用 Kadb Pairing。
 - 手动连接设备：输入目标设备 IP 和 ADB 端口。
-- USB OTG：识别 ADB / Fastboot 接口，授权后连接；Fastboot 命令可在 Shell 页执行。
+- USB OTG：识别 ADB / Fastboot 接口，授权后连接；Fastboot 命令页提供设备摘要、重启快捷按钮、手动查询和结果复制。
 - 最近设备：保存 WiFi 设备记录，支持点击回填 IP 和端口；USB 总线地址仅用于当前插入，不持久化。
 - 设备详情：读取品牌、型号、Android 版本、SDK、ABI、分辨率、电池信息。
 - 应用管理：读取目标设备应用列表，支持用户应用、系统应用分类，支持搜索、启动、停止、卸载。
@@ -120,7 +120,12 @@ skyadb/
 - 连接、断开、设备信息刷新和最近设备状态合并由仓库串行管理；授权等待受超时与取消控制，失败或取消会关闭待连接实例。
 - ADB 身份由 `AdbIdentityManager` 配置持久化存储，密钥在 IO 操作时按需加载。
 - 远端目录使用 `openSync().list()`，由 Kadb 协商 Sync v1/v2。文件下载写入目标同目录临时文件，成功后原子替换；失败保留已有文件。
-- Fastboot 连接、命令和释放在 IO 线程串行执行；只有 `OKAY` 表示命令成功，`FAIL` 展示目标设备返回的错误。
+- Fastboot 连接、命令、摘要读取和释放在 IO 线程串行执行。`fastboot-java` 复用命令构造能力；其传输接口不返回实际读写长度，应用通过 `FastbootUsbChannel` 校验 USB 接口声明、bulk 端点和完整写入，使用 `FastbootProtocol` 接收响应。
+- Fastboot 按实际包长读取最多 256 字节的响应，持续接收 `INFO` / `TEXT`，直到 `OKAY` / `FAIL`，不重发命令。普通命令总超时 10 秒，连接探测和单个摘要查询总超时 3 秒；接收按最多 250 ms 的等待片段检查取消。协议异常、超时、取消或未支持的 `DATA` 阶段关闭连接并清理会话；正常 `FAIL` 保留连接和错误输出。
+- Fastboot 输出缓存上限为 64 KiB，超出时标记截断并继续排空响应，保留终态。UI 在命令结束后一次更新输出，显示区域限制高度并支持双向滚动；命令结果和设备摘要均可复制。
+- 进入 Fastboot 命令页时读取产品型号、序列号、Bootloader 版本、当前槽位和 `is-userspace`，并支持手动刷新；不轮询或持久化摘要。不支持的变量显示“设备未提供”，不根据 `secure` 猜测解锁状态。
+- Fastboot 快捷按钮支持重启到系统、Bootloader、Recovery 和 fastbootd，实际可用性取决于设备。仅收到成功终态后显示指令已确认并清理当前连接；设备重新枚举后由用户在首页连接，不自动重放指令。
+- 单 Activity 应用入口使用 `singleTask`，USB 重新接入通过 `onNewIntent` 刷新设备列表，保留当前命令页和导航状态，避免模式切换堆叠 Activity。
 - 命令输入由 `CommandInputParser` 统一解析，只去除开头完整的客户端名称（支持 `.exe`），ADB Shell 正文的参数、引号和操作符保留。前缀与当前连接模式不一致时拒绝执行，不自动切换设备。
 - Fastboot 命令页使用对应标题和示例。`fastboot getvar product`、`fastboot erase cache`、`fastboot set_active b` 分别通过库构造为 `getvar:product`、`erase:cache`、`set_active:b`；支持 `fastboot reboot` 及带重启目标的写法，原始协议和 OEM 命令可直接输入。
 - `devices` 属于主机枚举操作，提示用户到首页查看设备；桌面选设备参数、交互式 Shell 参数和未实现的客户端文件传输流程在发送前提示。命令页不提供完整桌面 adb / fastboot 客户端兼容层，不支持镜像上传和刷写。
@@ -229,7 +234,9 @@ skyadb/
 git diff --check
 ```
 
-单元测试覆盖输入校验、错误处理、协议编码、状态模型等纯逻辑。真机测试覆盖单帧解码输出、镜像键盘开关，以及 USB 并发命令、文件往返和镜像 Surface 重建。USB 测试要求本机作为 OTG 主机连接已授权的 ADB 目标；缺少目标时跳过对应测试。
+单元测试覆盖输入校验、错误处理、协议编码、状态模型，以及 Fastboot 多包响应、总超时、取消、输出上限和异常关闭。真机测试覆盖单帧解码输出、镜像键盘开关、USB ADB 并发与文件往返、镜像 Surface 重建，以及 Fastboot 摘要、多行响应、失败后的查询和界面复制。USB 测试要求本机作为 OTG 主机连接对应模式下已授权的目标；缺少目标时跳过对应测试。
+
+`FastbootUiTest` 默认只查询和复制结果。显式传入 instrumentation 参数 `fastbootReboot=bootloader` 或 `fastbootReboot=system` 时额外验证对应重启按钮及会话清理，测试结束后目标设备停留在所选模式。额外传入 `fastbootPrepare=true` 可从已授权的 USB ADB 目标重启到 Bootloader，再执行本轮测试；未显式指定时不会切换目标模式。
 
 Debug 使用本地调试签名；未配置发布签名时，本地 Release APK 为未签名产物。Release 使用 R8 混淆和资源收缩。
 
