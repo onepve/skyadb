@@ -309,7 +309,7 @@ private fun QuickActionGrid(
     val shellLabel = stringResource(R.string.nav_shell)
     val actions = when (sessionKind) {
         AdbSessionKind.UsbFastboot -> listOf(
-            QuickActionSpec(shellLabel, Icons.Outlined.Code, onShellClick, SharedToolKeys.Shell),
+            QuickActionSpec(stringResource(R.string.fastboot_console_title), Icons.Outlined.Code, onShellClick, SharedToolKeys.Shell),
         )
         AdbSessionKind.None, AdbSessionKind.Wifi, AdbSessionKind.UsbAdb -> listOf(
             QuickActionSpec(stringResource(R.string.action_apps), Icons.Outlined.Apps, onAppsClick, SharedToolKeys.Apps),

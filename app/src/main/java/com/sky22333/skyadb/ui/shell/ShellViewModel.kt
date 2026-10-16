@@ -9,6 +9,7 @@ import com.sky22333.skyadb.i18n.appString
 import com.sky22333.skyadb.model.AdbOperationResult
 import com.sky22333.skyadb.model.OperationStatus
 import com.sky22333.skyadb.repository.AdbRepository
+import com.sky22333.skyadb.validation.CommandInputParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,20 +21,25 @@ data class ShellUiState(
     val history: List<String> = emptyList(),
     val operationStatus: OperationStatus = OperationStatus.Idle,
     val executeEnabled: Boolean = false,
+    val fastboot: Boolean = false,
 )
 
-class ShellViewModel(
-    private val adbRepository: AdbRepository = AppServices.adbRepository,
-) : ViewModel() {
-    private val state = MutableStateFlow(ShellUiState())
+class ShellViewModel(private val adbRepository: AdbRepository = AppServices.adbRepository) :
+    ViewModel() {
+    private val state =
+        MutableStateFlow(
+            ShellUiState(fastboot = adbRepository.sessionKind() == AdbSessionKind.UsbFastboot)
+        )
     val uiState: StateFlow<ShellUiState> = state.asStateFlow()
 
     fun onCommandChanged(value: String) {
-        state.value = state.value.copy(
-            command = value,
-            executeEnabled = value.isNotBlank(),
-            operationStatus = OperationStatus.Idle,
-        )
+        if (state.value.operationStatus is OperationStatus.Running) return
+        state.value =
+            state.value.copy(
+                command = value,
+                executeEnabled = value.isNotBlank(),
+                operationStatus = OperationStatus.Idle,
+            )
     }
 
     fun onHistoryCommandClick(command: String) {
@@ -41,27 +47,55 @@ class ShellViewModel(
     }
 
     fun onExecuteClick() {
-        val command = state.value.command.trim()
-        if (command.isBlank()) {
-            state.value = state.value.copy(
-                executeEnabled = false,
-                operationStatus = OperationStatus.Failed(
-                    text = appString(R.string.shell_cannot_execute),
-                    suggestion = appString(R.string.shell_enter_command_hint),
-                ),
-            )
+        if (state.value.operationStatus is OperationStatus.Running) return
+        val fastboot = adbRepository.sessionKind() == AdbSessionKind.UsbFastboot
+        val parsed = CommandInputParser.parse(state.value.command, fastboot)
+        if (parsed is CommandInputParser.Result.Rejected) {
+            state.value =
+                state.value.copy(
+                    fastboot = fastboot,
+                    operationStatus =
+                        OperationStatus.Failed(
+                            text = appString(R.string.shell_cannot_execute),
+                            suggestion =
+                                appString(
+                                    when (parsed.error) {
+                                        CommandInputParser.Error.Empty ->
+                                            R.string.shell_enter_command_hint
+                                        CommandInputParser.Error.WrongMode ->
+                                            R.string.command_wrong_mode
+                                        CommandInputParser.Error.Devices ->
+                                            R.string.command_devices_hint
+                                        CommandInputParser.Error.HostCommand ->
+                                            R.string.command_host_only_hint
+                                        CommandInputParser.Error.ClientOptions ->
+                                            R.string.command_client_options_hint
+                                        CommandInputParser.Error.FastbootSyntax ->
+                                            R.string.command_fastboot_syntax_hint
+                                        CommandInputParser.Error.FileTransfer ->
+                                            R.string.command_fastboot_file_hint
+                                    }
+                                ),
+                        ),
+                )
             return
         }
+        val command = (parsed as CommandInputParser.Result.Ready).command
 
-        state.value = state.value.copy(
-            executeEnabled = false,
-            operationStatus = OperationStatus.Running(appString(R.string.shell_executing, command)),
-        )
+        state.value =
+            state.value.copy(
+                executeEnabled = false,
+                fastboot = fastboot,
+                command = command,
+                operationStatus =
+                    OperationStatus.Running(appString(R.string.shell_executing, command)),
+            )
 
         viewModelScope.launch {
-            if (adbRepository.sessionKind() == AdbSessionKind.UsbFastboot) {
+            if (fastboot) {
                 when (val result = adbRepository.runFastbootCommand(command)) {
-                    is AdbOperationResult.Success -> applySuccess(command, result.data, exitCode = 0)
+                    is AdbOperationResult.Success ->
+                        applySuccess(command, result.data, exitCode = 0)
                     is AdbOperationResult.Failure -> applyFailure(result)
                 }
                 return@launch
@@ -86,22 +120,28 @@ class ShellViewModel(
     }
 
     private fun applySuccess(command: String, output: String, exitCode: Int) {
-        state.value = state.value.copy(
-            output = output,
-            history = (listOf(command) + state.value.history).distinct().take(20),
-            executeEnabled = true,
-            operationStatus = if (exitCode == 0) {
-                OperationStatus.Success(appString(R.string.shell_execute_success, exitCode))
-            } else {
-                OperationStatus.Failed(appString(R.string.kadb_command_failed), "Exit $exitCode: ${output.takeLast(500)}")
-            },
-        )
+        state.value =
+            state.value.copy(
+                output = output,
+                history = (listOf(command) + state.value.history).distinct().take(20),
+                executeEnabled = true,
+                operationStatus =
+                    if (exitCode == 0) {
+                        OperationStatus.Success(appString(R.string.shell_execute_success, exitCode))
+                    } else {
+                        OperationStatus.Failed(
+                            appString(R.string.kadb_command_failed),
+                            "Exit $exitCode: ${output.takeLast(500)}",
+                        )
+                    },
+            )
     }
 
     private fun applyFailure(result: AdbOperationResult.Failure) {
-        state.value = state.value.copy(
-            executeEnabled = true,
-            operationStatus = OperationStatus.Failed(result.message, result.suggestion),
-        )
+        state.value =
+            state.value.copy(
+                executeEnabled = true,
+                operationStatus = OperationStatus.Failed(result.message, result.suggestion),
+            )
     }
 }

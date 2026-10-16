@@ -203,6 +203,16 @@
     <string name="shell_command_input_title">Command input</string>
     <string name="shell_command_label">Shell command</string>
     <string name="shell_command_placeholder">e.g. getprop ro.product.model</string>
+    <string name="fastboot_console_title">Fastboot commands</string>
+    <string name="fastboot_command_placeholder">e.g. fastboot getvar product</string>
+    <string name="adb_command_input_hint">Accepts shell commands with or without the adb shell prefix.</string>
+    <string name="fastboot_command_input_hint">Accepts fastboot getvar product or getvar:product.</string>
+    <string name="command_wrong_mode">The command prefix does not match the current connection. Connect an ADB or Fastboot device of the matching type.</string>
+    <string name="command_devices_hint">devices lists devices on the host. View connected devices in USB OTG on the home page.</string>
+    <string name="command_host_only_hint">This desktop client command is not supported here. Use the connection, app or file management pages for those operations.</string>
+    <string name="command_client_options_hint">Commands use the device connected in this app. Remove desktop client options such as -s, -d and -t; interactive shell options are not supported.</string>
+    <string name="command_fastboot_syntax_hint">Enter one Fastboot command, such as fastboot getvar product, getvar:product or fastboot reboot.</string>
+    <string name="command_fastboot_file_hint">This command requires an image transfer workflow. This console does not support uploading or flashing image files.</string>
     <string name="action_execute">Execute</string>
     <string name="shell_output_title">Output</string>
     <string name="shell_no_output">No output yet</string>

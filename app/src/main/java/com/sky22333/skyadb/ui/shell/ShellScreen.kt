@@ -77,7 +77,7 @@ private fun ShellContent(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(stringResource(R.string.shell_title)) },
+            title = { Text(stringResource(if (uiState.fastboot) R.string.fastboot_console_title else R.string.shell_title)) },
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
                     Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.action_back))
@@ -126,10 +126,12 @@ private fun ShellCommandCard(
             SectionHeader(title = stringResource(R.string.shell_command_input_title))
             OutlinedTextField(
                 value = uiState.command,
+                enabled = uiState.operationStatus !is OperationStatus.Running,
                 onValueChange = onCommandChanged,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.shell_command_label)) },
-                placeholder = { Text(stringResource(R.string.shell_command_placeholder)) },
+                label = { Text(stringResource(if (uiState.fastboot) R.string.fastboot_console_title else R.string.shell_command_label)) },
+                placeholder = { Text(stringResource(if (uiState.fastboot) R.string.fastboot_command_placeholder else R.string.shell_command_placeholder)) },
+                supportingText = { Text(stringResource(if (uiState.fastboot) R.string.fastboot_command_input_hint else R.string.adb_command_input_hint)) },
                 minLines = 1,
                 maxLines = 4,
             )

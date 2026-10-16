@@ -203,6 +203,16 @@
     <string name="shell_command_input_title">命令输入</string>
     <string name="shell_command_label">Shell 命令</string>
     <string name="shell_command_placeholder">例如 getprop ro.product.model</string>
+    <string name="fastboot_console_title">Fastboot 命令</string>
+    <string name="fastboot_command_placeholder">例如 fastboot getvar product</string>
+    <string name="adb_command_input_hint">可直接输入 Shell 命令，也可粘贴带 adb shell 前缀的命令。</string>
+    <string name="fastboot_command_input_hint">支持 fastboot getvar product 或 getvar:product。</string>
+    <string name="command_wrong_mode">命令前缀与当前连接模式不匹配，请先连接对应的 ADB 或 Fastboot 设备。</string>
+    <string name="command_devices_hint">devices 用于在主机端列出设备，请在首页 USB OTG 列表查看已连接设备。</string>
+    <string name="command_host_only_hint">此处不支持这条桌面客户端命令，请使用应用内的连接、应用管理或文件管理功能。</string>
+    <string name="command_client_options_hint">命令使用应用当前连接的设备，请去掉 -s、-d、-t 等桌面客户端参数；此处也不支持交互式 Shell 参数。</string>
+    <string name="command_fastboot_syntax_hint">请输入一条 Fastboot 命令，例如 fastboot getvar product、getvar:product 或 fastboot reboot。</string>
+    <string name="command_fastboot_file_hint">此命令需要镜像文件传输流程，当前命令页不支持上传或刷写镜像文件。</string>
     <string name="action_execute">执行命令</string>
     <string name="shell_output_title">输出结果</string>
     <string name="shell_no_output">暂无输出</string>

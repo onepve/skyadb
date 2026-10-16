@@ -24,7 +24,7 @@ sky adb 是一款运行在 Android 手机上的支持简体中文和英文的 AD
 - 系统日志：读取目标设备最近系统日志，支持复制日志内容，便于排查目标设备问题。
 - 虚拟遥控器：模拟返回、主页、最近任务、方向键、确认、音量、静音、媒体控制等常用按键。
 - 屏幕镜像：基于官方 `scrcpy-server-v5.0.1`、Kadb `localabstract` 流、`SurfaceView` 和 `MediaCodec` 实现画面预览与远程触控；支持音频转发与中文输入；镜像页支持控制区显示/隐藏，输入键盘默认关闭，可独立显示和关闭；关闭输入区时收起软键盘并释放焦点。画面按远端视频比例居中显示。
-- Shell：执行单条 Shell 命令并展示输出、错误输出和退出码。
+- 命令页：ADB 模式执行 Shell 命令，Fastboot 模式发送协议命令；支持粘贴带 `adb` / `adb shell` / `fastboot` 前缀的输入，展示输出和执行状态。
 - 局域网发现：优先通过 Android NSD / mDNS 自动发现 ADB 服务，支持 `_adb._tcp.`、`_adb-tls-pairing._tcp.`、`_adb-tls-connect._tcp.`；自动发现无结果时，保留 TCP 网段扫描和 ADB 协议轻握手确认作为兜底。
 - 诊断日志：仅记录错误和异常信息，覆盖 WiFi ADB、配对、应用、文件、截图、系统日志、遥控器、屏幕镜像等功能，支持复制排查。
 - 设置：支持默认端口、连接超时、命令超时、扫描网段、屏幕镜像画质、主题模式配置。
@@ -121,6 +121,9 @@ skyadb/
 - ADB 身份由 `AdbIdentityManager` 配置持久化存储，密钥在 IO 操作时按需加载。
 - 远端目录使用 `openSync().list()`，由 Kadb 协商 Sync v1/v2。文件下载写入目标同目录临时文件，成功后原子替换；失败保留已有文件。
 - Fastboot 连接、命令和释放在 IO 线程串行执行；只有 `OKAY` 表示命令成功，`FAIL` 展示目标设备返回的错误。
+- 命令输入由 `CommandInputParser` 统一解析，只去除开头完整的客户端名称（支持 `.exe`），ADB Shell 正文的参数、引号和操作符保留。前缀与当前连接模式不一致时拒绝执行，不自动切换设备。
+- Fastboot 命令页使用对应标题和示例。`fastboot getvar product`、`fastboot erase cache`、`fastboot set_active b` 分别通过库构造为 `getvar:product`、`erase:cache`、`set_active:b`；支持 `fastboot reboot` 及带重启目标的写法，原始协议和 OEM 命令可直接输入。
+- `devices` 属于主机枚举操作，提示用户到首页查看设备；桌面选设备参数、交互式 Shell 参数和未实现的客户端文件传输流程在发送前提示。命令页不提供完整桌面 adb / fastboot 客户端兼容层，不支持镜像上传和刷写。
 - `ScrcpySession` 管理官方 server 及视频、音频、控制流；镜像退出只关闭自己的流，不关闭共享的 Kadb 连接。
 - `MediaCodecPump` 在独立 HandlerThread 上串行管理解码器，输出不依赖下一次网络输入。输入采用反压，支持设备声明的低延迟解码；音频按实际输出格式创建 AudioTrack，解码 PCM 直接通过 ByteBuffer 写入。
 - Surface 重建时保留 scrcpy 会话，重建视频解码器并发送 `RESET_VIDEO`，等待关键帧恢复画面；旧 Surface 的迟到回调与新解码器隔离。
