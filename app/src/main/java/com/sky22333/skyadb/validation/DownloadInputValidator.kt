@@ -1,6 +1,7 @@
 package com.sky22333.skyadb.validation
 
 import com.sky22333.skyadb.R
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 object DownloadInputValidator {
     fun urlError(value: String, requireApk: Boolean = false): Int? {
@@ -16,6 +17,6 @@ object DownloadInputValidator {
     }
 
     fun isHttpUrl(value: String): Boolean {
-        return value.startsWith("https://") || value.startsWith("http://")
+        return value.toHttpUrlOrNull() != null
     }
 }

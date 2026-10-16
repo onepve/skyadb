@@ -86,6 +86,7 @@ class DeviceDiscoveryViewModel(
 
     fun stopDiscovery() {
         discoveryActive = false
+        stopScan()
         mdnsDiscovery.stop()
     }
 

@@ -3,6 +3,7 @@ package com.sky22333.skyadb.ui.files
 import android.os.Build
 import android.os.Environment
 import android.os.SystemClock
+import android.system.Os
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sky22333.skyadb.AppServices
@@ -15,19 +16,26 @@ import com.sky22333.skyadb.model.OperationStatus
 import com.sky22333.skyadb.model.RemoteFileEntry
 import com.sky22333.skyadb.repository.AdbRepository
 import com.sky22333.skyadb.validation.DevicePathValidator
+import com.sky22333.skyadb.validation.FileNamePolicy
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class FilePaneId { Local, Remote }
+enum class FilePaneId {
+    Local,
+    Remote,
+}
 
 data class FilePaneState(
     val path: String,
@@ -60,7 +68,8 @@ data class FileTransferUiState(
 ) {
     fun pane(id: FilePaneId): FilePaneState = if (id == FilePaneId.Local) local else remote
 
-    val active: FilePaneState get() = pane(activePane)
+    val active: FilePaneState
+        get() = pane(activePane)
 
     val selectedEntries: List<RemoteFileEntry>
         get() = active.entries.filter { it.path in selectedPaths }
@@ -85,12 +94,13 @@ class FileTransferViewModel(
     private val fileManager: LocalFileManager = AppServices.localFileManager,
     private val adbRepository: AdbRepository = AppServices.adbRepository,
 ) : ViewModel() {
-    private val state = MutableStateFlow(
-        FileTransferUiState(
-            local = FilePaneState(path = fileManager.defaultBrowsePath()),
-            needsStoragePermission = !hasAllFilesAccess(),
-        ),
-    )
+    private val state =
+        MutableStateFlow(
+            FileTransferUiState(
+                local = FilePaneState(path = fileManager.defaultBrowsePath()),
+                needsStoragePermission = !hasAllFilesAccess(),
+            )
+        )
     val uiState: StateFlow<FileTransferUiState> = state.asStateFlow()
 
     private var localLoadJob: Job? = null
@@ -106,7 +116,7 @@ class FileTransferViewModel(
 
     fun onStoragePermissionResult() {
         val granted = hasAllFilesAccess()
-        state.value = state.value.copy(needsStoragePermission = !granted)
+        state.update { snapshot -> snapshot.copy(needsStoragePermission = !granted) }
         if (granted) {
             loadPane(FilePaneId.Local, state.value.local.path)
         }
@@ -114,31 +124,36 @@ class FileTransferViewModel(
 
     fun setActivePane(pane: FilePaneId) {
         if (state.value.activePane == pane) return
-        state.value = state.value.copy(
-            activePane = pane,
-            selectedPaths = emptySet(),
-            operationStatus = OperationStatus.Idle,
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                activePane = pane,
+                selectedPaths = emptySet(),
+                operationStatus = OperationStatus.Idle,
+            )
+        }
     }
 
     fun selectEntry(pane: FilePaneId, entry: RemoteFileEntry) {
         setActivePane(pane)
         if (entry.isDirectory) return
         val current = state.value.selectedPaths
-        state.value = state.value.copy(
-            selectedPaths = if (entry.path in current) current - entry.path else current + entry.path,
-            operationStatus = OperationStatus.Idle,
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                selectedPaths =
+                    if (entry.path in current) current - entry.path else current + entry.path,
+                operationStatus = OperationStatus.Idle,
+            )
+        }
     }
 
     fun clearSelection() {
-        state.value = state.value.copy(selectedPaths = emptySet())
+        state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
     }
 
     fun openEntry(pane: FilePaneId, entry: RemoteFileEntry) {
         setActivePane(pane)
         if (entry.isDirectory) {
-            state.value = state.value.copy(selectedPaths = emptySet())
+            state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
             loadPane(pane, entry.path)
         } else {
             selectEntry(pane, entry)
@@ -147,12 +162,14 @@ class FileTransferViewModel(
 
     fun goUp(pane: FilePaneId = state.value.activePane) {
         if (state.value.activePane != pane) {
-            state.value = state.value.copy(activePane = pane, selectedPaths = emptySet())
+            state.update { snapshot ->
+                snapshot.copy(activePane = pane, selectedPaths = emptySet())
+            }
         }
         val current = state.value.pane(pane).path.trimEnd('/', '\\')
         val parent = File(current).parent ?: return
         if (pane == FilePaneId.Remote && (current == "/" || current.isBlank())) return
-        state.value = state.value.copy(selectedPaths = emptySet())
+        state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
         loadPane(pane, if (pane == FilePaneId.Remote) normalizeRemotePath(parent) else parent)
     }
 
@@ -162,23 +179,25 @@ class FileTransferViewModel(
         when (current.activePane) {
             FilePaneId.Local -> {
                 val remote = current.remote.path.trimEnd('/')
-                val mapped = when {
-                    remote == "/sdcard" || remote.startsWith("/sdcard/") ->
-                        storageRoot + remote.removePrefix("/sdcard")
-                    remote.startsWith(storageRoot) -> remote
-                    else -> remote
-                }
+                val mapped =
+                    when {
+                        remote == "/sdcard" || remote.startsWith("/sdcard/") ->
+                            storageRoot + remote.removePrefix("/sdcard")
+                        remote.startsWith(storageRoot) -> remote
+                        else -> remote
+                    }
                 state.value = current.copy(selectedPaths = emptySet())
                 loadPane(FilePaneId.Local, mapped.ifBlank { storageRoot })
             }
             FilePaneId.Remote -> {
                 val local = current.local.path.trimEnd('/', '\\')
-                val mapped = when {
-                    local == storageRoot -> "/sdcard"
-                    local.startsWith(storageRoot) ->
-                        "/sdcard" + local.removePrefix(storageRoot).replace('\\', '/')
-                    else -> local.replace('\\', '/')
-                }
+                val mapped =
+                    when {
+                        local == storageRoot -> "/sdcard"
+                        local.startsWith(storageRoot) ->
+                            "/sdcard" + local.removePrefix(storageRoot).replace('\\', '/')
+                        else -> local.replace('\\', '/')
+                    }
                 state.value = current.copy(selectedPaths = emptySet())
                 loadPane(FilePaneId.Remote, normalizeRemotePath(mapped))
             }
@@ -186,74 +205,88 @@ class FileTransferViewModel(
     }
 
     fun showJumpDialog() {
-        state.value = state.value.copy(
-            jumpDialogVisible = true,
-            jumpInput = state.value.active.path,
-            jumpError = null,
-            operationStatus = OperationStatus.Idle,
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                jumpDialogVisible = true,
+                jumpInput = snapshot.active.path,
+                jumpError = null,
+                operationStatus = OperationStatus.Idle,
+            )
+        }
     }
 
     fun dismissJumpDialog() {
-        state.value = state.value.copy(jumpDialogVisible = false, jumpError = null)
+        state.update { snapshot -> snapshot.copy(jumpDialogVisible = false, jumpError = null) }
     }
 
     fun onJumpInputChanged(value: String) {
-        state.value = state.value.copy(jumpInput = value, jumpError = null)
+        state.update { snapshot -> snapshot.copy(jumpInput = value, jumpError = null) }
     }
 
     fun confirmJump() {
         val pane = state.value.activePane
         val raw = state.value.jumpInput.trim()
         if (raw.isBlank()) {
-            state.value = state.value.copy(jumpError = appString(R.string.files_path_empty))
+            state.update { snapshot ->
+                snapshot.copy(jumpError = appString(R.string.files_path_empty))
+            }
             return
         }
         if (pane == FilePaneId.Remote) {
             val error = DevicePathValidator.pathError(raw)?.resolve(AppServices.context)
             if (error != null) {
-                state.value = state.value.copy(jumpError = error)
+                state.update { snapshot -> snapshot.copy(jumpError = error) }
                 return
             }
         }
-        state.value = state.value.copy(jumpDialogVisible = false, selectedPaths = emptySet())
+        state.update { snapshot ->
+            snapshot.copy(jumpDialogVisible = false, selectedPaths = emptySet())
+        }
         loadPane(pane, raw)
     }
 
     fun showNewFolderDialog() {
-        state.value = state.value.copy(newFolderDialogVisible = true, operationStatus = OperationStatus.Idle)
+        state.update { snapshot ->
+            snapshot.copy(newFolderDialogVisible = true, operationStatus = OperationStatus.Idle)
+        }
     }
 
     fun dismissNewFolderDialog() {
-        state.value = state.value.copy(newFolderDialogVisible = false)
+        state.update { snapshot -> snapshot.copy(newFolderDialogVisible = false) }
     }
 
     fun createFolder(name: String) {
         val safeName = name.trim()
-        if (safeName.isBlank() || safeName.contains('/') || safeName.contains('\\')) {
+        if (!FileNamePolicy.isValid(safeName)) {
             publishStatus(
                 OperationStatus.Failed(
                     appString(R.string.files_cannot_create_folder),
                     appString(R.string.files_folder_name_invalid),
-                ),
+                )
             )
             return
         }
         val pane = state.value.activePane
         val parent = state.value.active.path
-        state.value = state.value.copy(
-            newFolderDialogVisible = false,
-            operationStatus = OperationStatus.Running(appString(R.string.files_creating_folder, safeName)),
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                newFolderDialogVisible = false,
+                operationStatus =
+                    OperationStatus.Running(appString(R.string.files_creating_folder, safeName)),
+            )
+        }
         viewModelScope.launch {
             when (pane) {
                 FilePaneId.Local -> {
-                    val result = withContext(Dispatchers.IO) {
-                        fileManager.createDirectory(parent, safeName)
-                    }
+                    val result =
+                        withContext(Dispatchers.IO) {
+                            fileManager.createDirectory(parent, safeName)
+                        }
                     result.fold(
                         onSuccess = {
-                            publishStatus(OperationStatus.Success(appString(R.string.files_folder_created)))
+                            publishStatus(
+                                OperationStatus.Success(appString(R.string.files_folder_created))
+                            )
                             loadPane(FilePaneId.Local, parent)
                         },
                         onFailure = { error ->
@@ -261,15 +294,19 @@ class FileTransferViewModel(
                                 OperationStatus.Failed(
                                     appString(R.string.files_create_failed),
                                     error.message ?: appString(R.string.files_confirm_dir_writable),
-                                ),
+                                )
                             )
                         },
                     )
                 }
                 FilePaneId.Remote -> {
-                    when (val result = adbRepository.makeDirectory(buildRemotePath(parent, safeName))) {
+                    when (
+                        val result = adbRepository.makeDirectory(buildRemotePath(parent, safeName))
+                    ) {
                         is AdbOperationResult.Success -> {
-                            publishStatus(OperationStatus.Success(appString(R.string.files_folder_created)))
+                            publishStatus(
+                                OperationStatus.Success(appString(R.string.files_folder_created))
+                            )
                             loadPane(FilePaneId.Remote, parent)
                         }
                         is AdbOperationResult.Failure -> {
@@ -282,66 +319,80 @@ class FileTransferViewModel(
     }
 
     fun showRenameDialog() {
-        val entry = state.value.selectedEntries.singleOrNull() ?: run {
-            publishStatus(
-                OperationStatus.Failed(
-                    appString(R.string.files_cannot_rename),
-                    appString(R.string.files_select_exactly_one),
-                ),
+        val entry =
+            state.value.selectedEntries.singleOrNull()
+                ?: run {
+                    publishStatus(
+                        OperationStatus.Failed(
+                            appString(R.string.files_cannot_rename),
+                            appString(R.string.files_select_exactly_one),
+                        )
+                    )
+                    return
+                }
+        state.update { snapshot ->
+            snapshot.copy(
+                renameDialogVisible = true,
+                renameInput = entry.name,
+                renameError = null,
+                operationStatus = OperationStatus.Idle,
             )
-            return
         }
-        state.value = state.value.copy(
-            renameDialogVisible = true,
-            renameInput = entry.name,
-            renameError = null,
-            operationStatus = OperationStatus.Idle,
-        )
     }
 
     fun dismissRenameDialog() {
-        state.value = state.value.copy(renameDialogVisible = false, renameError = null)
+        state.update { snapshot -> snapshot.copy(renameDialogVisible = false, renameError = null) }
     }
 
     fun onRenameInputChanged(value: String) {
-        state.value = state.value.copy(renameInput = value, renameError = null)
+        state.update { snapshot -> snapshot.copy(renameInput = value, renameError = null) }
     }
 
     fun confirmRename() {
         val entry = state.value.selectedEntries.singleOrNull() ?: return
         val newName = state.value.renameInput.trim()
-        if (newName.isBlank() || newName.contains('/') || newName.contains('\\')) {
-            state.value = state.value.copy(renameError = appString(R.string.files_rename_name_invalid))
+        if (!FileNamePolicy.isValid(newName)) {
+            state.update { snapshot ->
+                snapshot.copy(renameError = appString(R.string.files_rename_name_invalid))
+            }
             return
         }
         if (newName == entry.name) {
-            state.value = state.value.copy(renameDialogVisible = false)
+            state.update { snapshot -> snapshot.copy(renameDialogVisible = false) }
             return
         }
         val pane = state.value.activePane
         val parent = state.value.active.path
-        state.value = state.value.copy(
-            renameDialogVisible = false,
-            operationStatus = OperationStatus.Running(appString(R.string.files_renaming)),
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                renameDialogVisible = false,
+                operationStatus = OperationStatus.Running(appString(R.string.files_renaming)),
+            )
+        }
         viewModelScope.launch {
             when (pane) {
                 FilePaneId.Local -> {
-                    val result = withContext(Dispatchers.IO) {
-                        fileManager.rename(entry.path, newName)
-                    }
+                    val result =
+                        withContext(Dispatchers.IO) {
+                            fileManager.rename(entry.path, newName)
+                        }
                     result.fold(
                         onSuccess = {
-                            publishStatus(OperationStatus.Success(appString(R.string.files_renamed_to, newName)))
-                            state.value = state.value.copy(selectedPaths = emptySet())
+                            publishStatus(
+                                OperationStatus.Success(
+                                    appString(R.string.files_renamed_to, newName)
+                                )
+                            )
+                            state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
                             loadPane(FilePaneId.Local, parent)
                         },
                         onFailure = { error ->
                             publishStatus(
                                 OperationStatus.Failed(
                                     appString(R.string.error_rename_failed),
-                                    error.message ?: appString(R.string.files_confirm_name_available),
-                                ),
+                                    error.message
+                                        ?: appString(R.string.files_confirm_name_available),
+                                )
                             )
                         },
                     )
@@ -349,8 +400,12 @@ class FileTransferViewModel(
                 FilePaneId.Remote -> {
                     when (val result = adbRepository.renameFile(entry.path, newName)) {
                         is AdbOperationResult.Success -> {
-                            publishStatus(OperationStatus.Success(appString(R.string.files_renamed_to, newName)))
-                            state.value = state.value.copy(selectedPaths = emptySet())
+                            publishStatus(
+                                OperationStatus.Success(
+                                    appString(R.string.files_renamed_to, newName)
+                                )
+                            )
+                            state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
                             loadPane(FilePaneId.Remote, parent)
                         }
                         is AdbOperationResult.Failure -> {
@@ -365,16 +420,19 @@ class FileTransferViewModel(
     fun requestDelete(pane: FilePaneId, entry: RemoteFileEntry) {
         setActivePane(pane)
         val selected = state.value.selectedPaths
-        val targets = if (selected.isNotEmpty() && entry.path in selected) selected else setOf(entry.path)
-        state.value = state.value.copy(
-            selectedPaths = targets,
-            pendingDeletePaths = targets,
-            operationStatus = OperationStatus.Idle,
-        )
+        val targets =
+            if (selected.isNotEmpty() && entry.path in selected) selected else setOf(entry.path)
+        state.update { snapshot ->
+            snapshot.copy(
+                selectedPaths = targets,
+                pendingDeletePaths = targets,
+                operationStatus = OperationStatus.Idle,
+            )
+        }
     }
 
     fun cancelDelete() {
-        state.value = state.value.copy(pendingDeletePaths = emptySet())
+        state.update { snapshot -> snapshot.copy(pendingDeletePaths = emptySet()) }
     }
 
     fun confirmDelete() {
@@ -383,27 +441,33 @@ class FileTransferViewModel(
         val pane = state.value.activePane
         val parentPath = state.value.active.path
         val entries = state.value.active.entries.filter { it.path in paths }
-        state.value = state.value.copy(
-            pendingDeletePaths = emptySet(),
-            selectedPaths = emptySet(),
-            operationStatus = OperationStatus.Running(appString(R.string.files_deleting_count, paths.size)),
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                pendingDeletePaths = emptySet(),
+                selectedPaths = emptySet(),
+                operationStatus =
+                    OperationStatus.Running(appString(R.string.files_deleting_count, paths.size)),
+            )
+        }
         viewModelScope.launch {
             var failed: String? = null
             for (entry in entries) {
-                ensureActive()
+                currentCoroutineContext().ensureActive()
                 when (pane) {
                     FilePaneId.Local -> {
-                        val result = withContext(Dispatchers.IO) {
-                            fileManager.delete(entry.path, entry.isDirectory)
-                        }
+                        val result =
+                            withContext(Dispatchers.IO) {
+                                fileManager.delete(entry.path, entry.isDirectory)
+                            }
                         if (result.isFailure) {
                             failed = result.exceptionOrNull()?.message
                             break
                         }
                     }
                     FilePaneId.Remote -> {
-                        when (val result = adbRepository.deleteFile(entry.path, entry.isDirectory)) {
+                        when (
+                            val result = adbRepository.deleteFile(entry.path, entry.isDirectory)
+                        ) {
                             is AdbOperationResult.Failure -> {
                                 failed = result.message
                                 break
@@ -414,9 +478,13 @@ class FileTransferViewModel(
                 }
             }
             if (failed == null) {
-                publishStatus(OperationStatus.Success(appString(R.string.files_deleted_count, entries.size)))
+                publishStatus(
+                    OperationStatus.Success(appString(R.string.files_deleted_count, entries.size))
+                )
             } else {
-                publishStatus(OperationStatus.Failed(appString(R.string.files_delete_incomplete), failed))
+                publishStatus(
+                    OperationStatus.Failed(appString(R.string.files_delete_incomplete), failed)
+                )
             }
             loadPane(pane, parentPath)
         }
@@ -430,7 +498,7 @@ class FileTransferViewModel(
                 OperationStatus.Failed(
                     appString(R.string.files_no_file_selected),
                     appString(R.string.files_select_files_hint),
-                ),
+                )
             )
             return
         }
@@ -440,20 +508,28 @@ class FileTransferViewModel(
                 when (current.activePane) {
                     FilePaneId.Local -> {
                         files.forEachIndexed { index, entry ->
-                            ensureActive()
+                            currentCoroutineContext().ensureActive()
                             pushLocalFile(entry, current.remote.path, index + 1, files.size)
                         }
-                        publishStatus(OperationStatus.Success(appString(R.string.files_uploaded_count, files.size)))
-                        state.value = state.value.copy(selectedPaths = emptySet())
+                        publishStatus(
+                            OperationStatus.Success(
+                                appString(R.string.files_uploaded_count, files.size)
+                            )
+                        )
+                        state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
                         loadPane(FilePaneId.Remote, current.remote.path)
                     }
                     FilePaneId.Remote -> {
                         files.forEachIndexed { index, entry ->
-                            ensureActive()
+                            currentCoroutineContext().ensureActive()
                             pullRemoteFile(entry, current.local.path, index + 1, files.size)
                         }
-                        publishStatus(OperationStatus.Success(appString(R.string.files_downloaded_count, files.size)))
-                        state.value = state.value.copy(selectedPaths = emptySet())
+                        publishStatus(
+                            OperationStatus.Success(
+                                appString(R.string.files_downloaded_count, files.size)
+                            )
+                        )
+                        state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
                         loadPane(FilePaneId.Local, current.local.path)
                     }
                 }
@@ -464,7 +540,7 @@ class FileTransferViewModel(
                     OperationStatus.Failed(
                         appString(R.string.files_transfer_interrupted),
                         error.message ?: appString(R.string.files_check_connection_hint),
-                    ),
+                    )
                 )
             }
         }
@@ -483,20 +559,24 @@ class FileTransferViewModel(
         val localFile = File(entry.path)
         if (!localFile.isFile) error(appString(R.string.files_local_file_missing, entry.name))
         val remotePath = buildRemotePath(remoteDir, entry.name)
-        state.value = state.value.copy(
-            operationStatus = OperationStatus.Running(
-                appString(R.string.files_uploading_progress, index, totalCount, entry.name),
-            ),
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                operationStatus =
+                    OperationStatus.Running(
+                        appString(R.string.files_uploading_progress, index, totalCount, entry.name)
+                    )
+            )
+        }
         when (
-            val result = adbRepository.push(localFile, remotePath) { transferred, total ->
-                emitTransferProgress(
-                    appString(R.string.files_uploading_short, index, totalCount),
-                    appString(R.string.files_upload_finishing, index, totalCount),
-                    transferred,
-                    total,
-                )
-            }
+            val result =
+                adbRepository.push(localFile, remotePath) { transferred, total ->
+                    emitTransferProgress(
+                        appString(R.string.files_uploading_short, index, totalCount),
+                        appString(R.string.files_upload_finishing, index, totalCount),
+                        transferred,
+                        total,
+                    )
+                }
         ) {
             is AdbOperationResult.Success -> Unit
             is AdbOperationResult.Failure -> error(result.message)
@@ -509,19 +589,36 @@ class FileTransferViewModel(
         index: Int,
         totalCount: Int,
     ) {
+        require(FileNamePolicy.isValid(entry.name)) { "Invalid remote filename" }
         val dest = File(localDir, entry.name)
-        state.value = state.value.copy(
-            operationStatus = OperationStatus.Running(
-                appString(R.string.files_downloading_progress, index, totalCount, entry.name),
-            ),
-        )
+        val staging =
+            withContext(Dispatchers.IO) { File.createTempFile(".skyadb-", ".part", File(localDir)) }
+        state.update { snapshot ->
+            snapshot.copy(
+                operationStatus =
+                    OperationStatus.Running(
+                        appString(
+                            R.string.files_downloading_progress,
+                            index,
+                            totalCount,
+                            entry.name,
+                        )
+                    )
+            )
+        }
         withContext(Dispatchers.IO) { dest.parentFile?.mkdirs() }
-        when (val result = adbRepository.pull(entry.path, dest)) {
-            is AdbOperationResult.Success -> Unit
-            is AdbOperationResult.Failure -> {
-                withContext(Dispatchers.IO) { dest.delete() }
-                error(result.message)
+        try {
+            when (val result = adbRepository.pull(entry.path, staging)) {
+                is AdbOperationResult.Success -> {
+                    currentCoroutineContext().ensureActive()
+                    withContext(Dispatchers.IO) {
+                        Os.rename(staging.absolutePath, dest.absolutePath)
+                    }
+                }
+                is AdbOperationResult.Failure -> error(result.message)
             }
+        } finally {
+            withContext(Dispatchers.IO + NonCancellable) { staging.delete() }
         }
     }
 
@@ -535,24 +632,29 @@ class FileTransferViewModel(
         val done = total > 0L && transferred >= total
         if (!done && now - lastProgressEmitMs < 50L) return
         lastProgressEmitMs = now
-        state.value = state.value.copy(
-            operationStatus = adbTransferRunning(
-                transferringLabel = transferringLabel,
-                finishingLabel = finishingLabel,
-                transferred = transferred,
-                total = total,
-            ),
-        )
+        state.update { snapshot ->
+            snapshot.copy(
+                operationStatus =
+                    adbTransferRunning(
+                        transferringLabel = transferringLabel,
+                        finishingLabel = finishingLabel,
+                        transferred = transferred,
+                        total = total,
+                    )
+            )
+        }
     }
 
     private fun publishStatus(status: OperationStatus) {
         statusClearJob?.cancel()
-        state.value = state.value.copy(operationStatus = status)
+        state.update { snapshot -> snapshot.copy(operationStatus = status) }
         if (status is OperationStatus.Success) {
             statusClearJob = viewModelScope.launch {
                 delay(1_400)
                 if (state.value.operationStatus is OperationStatus.Success) {
-                    state.value = state.value.copy(operationStatus = OperationStatus.Idle)
+                    state.update { snapshot ->
+                        snapshot.copy(operationStatus = OperationStatus.Idle)
+                    }
                 }
             }
         }
@@ -567,36 +669,52 @@ class FileTransferViewModel(
                 }
                 localLoadJob?.cancel()
                 localLoadJob = viewModelScope.launch {
-                    val result = withContext(Dispatchers.IO) { fileManager.listDirectory(normalized) }
-                    ensureActive()
+                    val result =
+                        withContext(Dispatchers.IO) { fileManager.listDirectory(normalized) }
+                    currentCoroutineContext().ensureActive()
                     result.fold(
                         onSuccess = { entries ->
                             updatePane(FilePaneId.Local) {
                                 it.copy(entries = entries, loading = false, error = null)
                             }
-                            state.value = state.value.copy(needsStoragePermission = false)
-                            if (state.value.activePane == FilePaneId.Local &&
-                                state.value.operationStatus !is OperationStatus.Running
+                            state.update { snapshot ->
+                                snapshot.copy(needsStoragePermission = false)
+                            }
+                            if (
+                                state.value.activePane == FilePaneId.Local &&
+                                    state.value.operationStatus !is OperationStatus.Running
                             ) {
-                                state.value = state.value.copy(operationStatus = OperationStatus.Idle)
+                                state.update { snapshot ->
+                                    snapshot.copy(operationStatus = OperationStatus.Idle)
+                                }
                             }
                         },
                         onFailure = { error ->
                             val needsPermission = !hasAllFilesAccess()
                             updatePane(FilePaneId.Local) {
-                                it.copy(entries = emptyList(), loading = false, error = error.message)
+                                it.copy(
+                                    entries = emptyList(),
+                                    loading = false,
+                                    error = error.message,
+                                )
                             }
-                            state.value = state.value.copy(
-                                needsStoragePermission = needsPermission,
-                                operationStatus = if (state.value.activePane == FilePaneId.Local) {
-                                    OperationStatus.Failed(
-                                        appString(R.string.files_cannot_read_local_dir),
-                                        error.message ?: appString(R.string.files_grant_storage_permission),
-                                    )
-                                } else {
-                                    state.value.operationStatus
-                                },
-                            )
+                            state.update { snapshot ->
+                                snapshot.copy(
+                                    needsStoragePermission = needsPermission,
+                                    operationStatus =
+                                        if (snapshot.activePane == FilePaneId.Local) {
+                                            OperationStatus.Failed(
+                                                appString(R.string.files_cannot_read_local_dir),
+                                                error.message
+                                                    ?: appString(
+                                                        R.string.files_grant_storage_permission
+                                                    ),
+                                            )
+                                        } else {
+                                            snapshot.operationStatus
+                                        },
+                                )
+                            }
                         },
                     )
                 }
@@ -610,23 +728,32 @@ class FileTransferViewModel(
                 remoteLoadJob = viewModelScope.launch {
                     when (val result = adbRepository.listFiles(normalized)) {
                         is AdbOperationResult.Success -> {
-                            ensureActive()
+                            currentCoroutineContext().ensureActive()
                             updatePane(FilePaneId.Remote) {
                                 it.copy(entries = result.data, loading = false, error = null)
                             }
-                            if (state.value.activePane == FilePaneId.Remote &&
-                                state.value.operationStatus !is OperationStatus.Running
+                            if (
+                                state.value.activePane == FilePaneId.Remote &&
+                                    state.value.operationStatus !is OperationStatus.Running
                             ) {
-                                state.value = state.value.copy(operationStatus = OperationStatus.Idle)
+                                state.update { snapshot ->
+                                    snapshot.copy(operationStatus = OperationStatus.Idle)
+                                }
                             }
                         }
                         is AdbOperationResult.Failure -> {
-                            ensureActive()
+                            currentCoroutineContext().ensureActive()
                             updatePane(FilePaneId.Remote) {
-                                it.copy(entries = emptyList(), loading = false, error = result.message)
+                                it.copy(
+                                    entries = emptyList(),
+                                    loading = false,
+                                    error = result.message,
+                                )
                             }
                             if (state.value.activePane == FilePaneId.Remote) {
-                                publishStatus(OperationStatus.Failed(result.message, result.suggestion))
+                                publishStatus(
+                                    OperationStatus.Failed(result.message, result.suggestion)
+                                )
                             }
                         }
                     }
@@ -637,10 +764,11 @@ class FileTransferViewModel(
 
     private fun updatePane(pane: FilePaneId, transform: (FilePaneState) -> FilePaneState) {
         val current = state.value
-        state.value = when (pane) {
-            FilePaneId.Local -> current.copy(local = transform(current.local))
-            FilePaneId.Remote -> current.copy(remote = transform(current.remote))
-        }
+        state.value =
+            when (pane) {
+                FilePaneId.Local -> current.copy(local = transform(current.local))
+                FilePaneId.Remote -> current.copy(remote = transform(current.remote))
+            }
     }
 
     private fun normalizeRemotePath(path: String): String {

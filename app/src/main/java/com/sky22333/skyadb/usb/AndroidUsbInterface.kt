@@ -2,6 +2,7 @@ package com.sky22333.skyadb.usb
 
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbInterface
+import com.flyfishxu.kadb.usb.KadbUsb
 
 enum class UsbOtgMode {
     Adb,
@@ -16,22 +17,22 @@ object AndroidUsbInterface {
 
     fun modeOf(device: UsbDevice): UsbOtgMode? {
         return when {
-            findInterface(device, ProtocolAdb) != null -> UsbOtgMode.Adb
+            KadbUsb.isAdbDevice(device) -> UsbOtgMode.Adb
             findInterface(device, ProtocolFastboot) != null -> UsbOtgMode.Fastboot
             else -> null
         }
     }
 
-    fun findAdbInterface(device: UsbDevice): UsbInterface? = findInterface(device, ProtocolAdb)
-
-    fun findFastbootInterface(device: UsbDevice): UsbInterface? = findInterface(device, ProtocolFastboot)
+    fun findFastbootInterface(device: UsbDevice): UsbInterface? =
+        findInterface(device, ProtocolFastboot)
 
     fun isAndroidDebugInterface(
         interfaceClass: Int,
         interfaceSubclass: Int,
         interfaceProtocol: Int,
     ): UsbOtgMode? {
-        if (interfaceClass != ClassVendorSpecific || interfaceSubclass != SubclassAndroid) return null
+        if (interfaceClass != ClassVendorSpecific || interfaceSubclass != SubclassAndroid)
+            return null
         return when (interfaceProtocol) {
             ProtocolAdb -> UsbOtgMode.Adb
             ProtocolFastboot -> UsbOtgMode.Fastboot
@@ -42,13 +43,15 @@ object AndroidUsbInterface {
     private fun findInterface(device: UsbDevice, protocol: Int): UsbInterface? {
         for (index in 0 until device.interfaceCount) {
             val usbInterface = device.getInterface(index)
-            val mode = isAndroidDebugInterface(
-                usbInterface.interfaceClass,
-                usbInterface.interfaceSubclass,
-                usbInterface.interfaceProtocol,
-            ) ?: continue
-            if ((protocol == ProtocolAdb && mode == UsbOtgMode.Adb) ||
-                (protocol == ProtocolFastboot && mode == UsbOtgMode.Fastboot)
+            val mode =
+                isAndroidDebugInterface(
+                    usbInterface.interfaceClass,
+                    usbInterface.interfaceSubclass,
+                    usbInterface.interfaceProtocol,
+                ) ?: continue
+            if (
+                (protocol == ProtocolAdb && mode == UsbOtgMode.Adb) ||
+                    (protocol == ProtocolFastboot && mode == UsbOtgMode.Fastboot)
             ) {
                 return usbInterface
             }

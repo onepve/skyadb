@@ -301,14 +301,9 @@
     <string name="kadb_connect_before_push_suggestion">Connect a device first, then push the file.</string>
     <string name="kadb_connect_before_pull_suggestion">Connect a device first, then pull the file.</string>
     <string name="kadb_connect_before_mirror_suggestion">Connect a device first, then start screen mirroring.</string>
-    <string name="kadb_connect_failed">Connection failed</string>
-    <string name="kadb_connect_failed_probe_suggestion">The device responded but the command failed. Make sure wireless debugging is authorized on the target device.</string>
     <string name="kadb_cannot_connect_device">Unable to connect to the device</string>
     <string name="kadb_cannot_connect_suggestion">Make sure the device is on the same network, the ADB port is correct, and debugging is authorized.</string>
-    <string name="kadb_adb_interface_not_found">ADB interface not found</string>
-    <string name="kadb_adb_interface_suggestion">Make sure USB debugging is enabled on the target device and it isn\'t in Fastboot mode.</string>
     <string name="kadb_usb_otg_connect_failed">USB OTG connection failed</string>
-    <string name="kadb_usb_otg_connect_suggestion">Make sure USB debugging is authorized on the target device, then reconnect the OTG cable.</string>
     <string name="kadb_pair_failed">Wireless debugging pairing failed</string>
     <string name="kadb_pair_failed_suggestion">Make sure the pairing code hasn\'t expired, and the pairing IP and port match the pairing dialog on the target device.</string>
     <string name="kadb_command_failed">Command execution failed</string>
@@ -343,11 +338,6 @@
     <string name="kadb_pull_suggestion">Make sure the device path exists, the local save location is writable, and the device stays connected.</string>
     <string name="kadb_screenshot_failed">Screenshot failed</string>
     <string name="kadb_screenshot_suggestion">Make sure the device allows the screencap command.</string>
-    <string name="kadb_mirror_usb_unsupported">Screen mirroring isn\'t supported over USB OTG yet</string>
-    <string name="kadb_mirror_usb_unsupported_suggestion">Screen mirroring needs multiple parallel ADB connections, but USB OTG only supports a single channel. Please use Wi-Fi ADB instead.</string>
-    <string name="kadb_mirror_connect_failed">Screen mirroring connection failed</string>
-    <string name="kadb_mirror_restored_suggestion">Make sure the device is still online, then try entering screen mirroring again.</string>
-    <string name="kadb_mirror_not_restored_suggestion">Mirroring connection failed and the previous session couldn\'t be restored. Please reconnect the device.</string>
 
     <!-- FastbootOtgManager -->
     <string name="fastboot_interface_not_found">Fastboot interface not found</string>
@@ -383,22 +373,15 @@
     <string name="scrcpy_video_stream_error">Screen mirroring video stream error</string>
     <string name="scrcpy_start_failed">Failed to start screen mirroring</string>
     <string name="scrcpy_start_failed_fallback_suggestion">Check the diagnostic logs in Settings.</string>
-    <string name="scrcpy_stop_release_failed">Failed to release screen mirroring resources</string>
-    <string name="scrcpy_stop_release_failed_suggestion">If starting again fails, reconnect the device.</string>
     <string name="scrcpy_control_disconnected_suggestion">The mirroring connection may have dropped. Please re-enter screen mirroring.</string>
     <string name="scrcpy_send_touch_failed">Failed to send the remote touch event</string>
     <string name="scrcpy_send_key_failed">Failed to send the remote key event</string>
     <string name="scrcpy_send_text_failed">Failed to send the remote text</string>
     <string name="scrcpy_mirror_diagnostic_template">Current quality: %1$s. Start parameters: %2$s. Please re-enter screen mirroring; if it keeps failing, switch to the smooth quality preset.</string>
     <string name="scrcpy_mirror_diagnostic_with_log">%1$s\nscrcpy server log:\n%2$s</string>
-    <string name="scrcpy_audio_requires_connection">An audio connection is required when audio is enabled</string>
     <string name="scrcpy_socket_connect_failed">Unable to connect to the scrcpy socket: %1$s</string>
-    <string name="scrcpy_unsupported_codec">Unsupported video codec: 0x%1$s</string>
 
     <!-- UsbBulkChannel -->
-    <string name="usb_claim_interface_failed">Unable to claim the USB interface</string>
-    <string name="usb_bulk_endpoint_not_found">USB bulk endpoint not found</string>
-    <string name="usb_write_failed">USB write failed: %1$s</string>
 
     <!-- LocalFileManager -->
     <string name="files_dir_not_exist">The directory doesn\'t exist</string>
@@ -427,7 +410,6 @@
     <string name="download_complete">Download complete</string>
 
     <!-- AndroidAdbMdnsDiscovery -->
-    <string name="discovery_start_failed">Automatic discovery failed to start. You can continue using subnet scanning.</string>
     <string name="discovery_unavailable">Automatic discovery isn\'t available. You can continue using subnet scanning.</string>
 
     <!-- Device type / connection state labels -->
@@ -719,4 +701,7 @@
     <string name="files_downloading_progress">Downloading %1$d/%2$d \u00b7 %3$s</string>
     <string name="files_cannot_read_local_dir">Cannot read local directory</string>
     <string name="files_grant_storage_permission">Please grant storage permission.</string>
+    <string name="mirror_toggle_keyboard">Show or hide text keyboard</string>
+    <string name="mirror_hide_keyboard">Close text keyboard</string>
+    <string name="usb_connection_hint">Keep the data cable connected, enable USB debugging on the target and allow its debugging authorization prompt. Reconnect if authorization times out.</string>
 </resources>

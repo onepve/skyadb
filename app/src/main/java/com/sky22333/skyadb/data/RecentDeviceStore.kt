@@ -32,12 +32,13 @@ class RecentDeviceStore(context: Context) {
                 .orEmpty()
                 .lineSequence()
                 .mapNotNull(::decodeDevice)
+                .filter { it.linkKind == AdbLinkKind.Wifi }
                 .toList()
         }
 
     suspend fun saveDevices(devices: List<AdbDevice>) {
         dataStore.edit { preferences ->
-            preferences[Keys.Devices] = devices
+            preferences[Keys.Devices] = devices.filter { it.linkKind == AdbLinkKind.Wifi }
                 .take(MaxRecentDevices)
                 .joinToString(separator = "\n", transform = ::encodeDevice)
         }
@@ -49,6 +50,7 @@ class RecentDeviceStore(context: Context) {
                 .orEmpty()
                 .lineSequence()
                 .mapNotNull(::decodeDevice)
+                .filter { it.linkKind == AdbLinkKind.Wifi }
                 .toList()
             val next = listOf(device) + current.filterNot { it.id == device.id }
             preferences[Keys.Devices] = next

@@ -301,14 +301,9 @@
     <string name="kadb_connect_before_push_suggestion">请先连接设备，再推送文件。</string>
     <string name="kadb_connect_before_pull_suggestion">请先连接设备，再拉取文件。</string>
     <string name="kadb_connect_before_mirror_suggestion">请先连接设备，再启动屏幕镜像。</string>
-    <string name="kadb_connect_failed">连接失败</string>
-    <string name="kadb_connect_failed_probe_suggestion">设备已响应但命令执行失败，请确认目标设备已允许无线调试授权。</string>
     <string name="kadb_cannot_connect_device">无法连接到设备</string>
     <string name="kadb_cannot_connect_suggestion">请确认设备与本机处于同一网络、ADB 端口正确，并已允许调试授权。</string>
-    <string name="kadb_adb_interface_not_found">未找到 ADB 接口</string>
-    <string name="kadb_adb_interface_suggestion">请确认目标设备已开启 USB 调试，且当前不是 Fastboot 模式。</string>
     <string name="kadb_usb_otg_connect_failed">USB OTG 连接失败</string>
-    <string name="kadb_usb_otg_connect_suggestion">请确认目标设备已允许 USB 调试授权，并重新插拔 OTG 线。</string>
     <string name="kadb_pair_failed">无线调试配对失败</string>
     <string name="kadb_pair_failed_suggestion">请确认配对码未过期，配对 IP 和配对端口来自目标设备的配对窗口。</string>
     <string name="kadb_command_failed">命令执行失败</string>
@@ -343,11 +338,6 @@
     <string name="kadb_pull_suggestion">请确认设备路径存在，本机保存位置可写，并保持设备连接。</string>
     <string name="kadb_screenshot_failed">截图失败</string>
     <string name="kadb_screenshot_suggestion">请确认设备允许执行 screencap 命令。</string>
-    <string name="kadb_mirror_usb_unsupported">USB OTG 暂不支持屏幕镜像</string>
-    <string name="kadb_mirror_usb_unsupported_suggestion">屏幕镜像需要多路并行 ADB 连接，当前 USB OTG 仅支持单通道。请改用 Wi-Fi ADB 连接后再试。</string>
-    <string name="kadb_mirror_connect_failed">屏幕镜像连接失败</string>
-    <string name="kadb_mirror_restored_suggestion">请确认设备仍在线，并重新尝试进入屏幕镜像。</string>
-    <string name="kadb_mirror_not_restored_suggestion">镜像连接失败，且无法恢复原会话，请重新连接设备。</string>
 
     <!-- FastbootOtgManager -->
     <string name="fastboot_interface_not_found">未找到 Fastboot 接口</string>
@@ -383,22 +373,15 @@
     <string name="scrcpy_video_stream_error">屏幕镜像视频流异常</string>
     <string name="scrcpy_start_failed">屏幕镜像启动失败</string>
     <string name="scrcpy_start_failed_fallback_suggestion">请查看设置里的诊断日志。</string>
-    <string name="scrcpy_stop_release_failed">释放屏幕镜像资源失败</string>
-    <string name="scrcpy_stop_release_failed_suggestion">如果再次启动异常，请重新连接设备。</string>
     <string name="scrcpy_control_disconnected_suggestion">镜像连接可能已断开，请重新进入屏幕镜像。</string>
     <string name="scrcpy_send_touch_failed">远程触摸发送失败</string>
     <string name="scrcpy_send_key_failed">远程按键发送失败</string>
     <string name="scrcpy_send_text_failed">远程文本发送失败</string>
     <string name="scrcpy_mirror_diagnostic_template">当前画质：%1$s。启动参数：%2$s。请重新进入屏幕镜像；如果持续失败，请切换到流畅画质。</string>
     <string name="scrcpy_mirror_diagnostic_with_log">%1$s\nscrcpy server 日志：\n%2$s</string>
-    <string name="scrcpy_audio_requires_connection">启用音频时需要 audio 连接</string>
     <string name="scrcpy_socket_connect_failed">无法连接 scrcpy socket：%1$s</string>
-    <string name="scrcpy_unsupported_codec">不支持的视频编码：0x%1$s</string>
 
     <!-- UsbBulkChannel -->
-    <string name="usb_claim_interface_failed">无法占用 USB 接口</string>
-    <string name="usb_bulk_endpoint_not_found">未找到 USB Bulk 端点</string>
-    <string name="usb_write_failed">USB 写入失败：%1$s</string>
 
     <!-- LocalFileManager -->
     <string name="files_dir_not_exist">目录不存在</string>
@@ -427,7 +410,6 @@
     <string name="download_complete">下载完成</string>
 
     <!-- AndroidAdbMdnsDiscovery -->
-    <string name="discovery_start_failed">自动发现启动失败，可继续使用网段扫描。</string>
     <string name="discovery_unavailable">自动发现不可用，可继续使用网段扫描。</string>
 
     <!-- Device type / connection state labels -->
@@ -719,4 +701,7 @@
     <string name="files_downloading_progress">下载 %1$d/%2$d \u00b7 %3$s</string>
     <string name="files_cannot_read_local_dir">无法读取本机目录</string>
     <string name="files_grant_storage_permission">请授予存储权限。</string>
+    <string name="mirror_toggle_keyboard">显示或关闭输入键盘</string>
+    <string name="mirror_hide_keyboard">关闭输入键盘</string>
+    <string name="usb_connection_hint">请保持数据线连接，在目标设备开启 USB 调试，并允许 USB 调试授权。授权等待超时后可重新连接。</string>
 </resources>

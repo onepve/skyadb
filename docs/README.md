@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-sky adb 是一款运行在 Android 手机上的全中文 ADB 管理工具。它通过 WiFi ADB / Wireless Debugging 连接并管理目标 Android 设备，适用于手机、平板、电视、盒子等设备的日常维护。
+sky adb 是一款运行在 Android 手机上的支持简体中文和英文的 ADB 管理工具。它通过 WiFi ADB / Wireless Debugging 连接并管理目标 Android 设备，适用于手机、平板、电视、盒子等设备的日常维护。
 
 当前交付目标是 Android App，未来仅做少量架构预留，方便后续评估 Windows 端支持，不在当前版本中引入复杂跨平台工程。
 
@@ -23,7 +23,7 @@ sky adb 是一款运行在 Android 手机上的全中文 ADB 管理工具。它�
 - 截图：调用目标设备 `screencap`，拉取截图到本机缓存并预览，需要时再由用户选择保存位置。
 - 系统日志：读取目标设备最近系统日志，支持复制日志内容，便于排查目标设备问题。
 - 虚拟遥控器：模拟返回、主页、最近任务、方向键、确认、音量、静音、媒体控制等常用按键。
-- 屏幕镜像：基于官方 `scrcpy-server-v4.1`、Kadb `localabstract` 流、`SurfaceView` 和 `MediaCodec` 实现画面预览与远程触控；支持音频转发与中文输入；镜像页支持控制区显示/隐藏，画面按远端视频比例居中显示。
+- 屏幕镜像：基于官方 `scrcpy-server-v5.0.1`、Kadb `localabstract` 流、`SurfaceView` 和 `MediaCodec` 实现画面预览与远程触控；支持音频转发与中文输入；镜像页支持控制区显示/隐藏，画面按远端视频比例居中显示。
 - Shell：执行单条 Shell 命令并展示输出、错误输出和退出码。
 - 局域网发现：优先通过 Android NSD / mDNS 自动发现 ADB 服务，支持 `_adb._tcp.`、`_adb-tls-pairing._tcp.`、`_adb-tls-connect._tcp.`；自动发现无结果时，保留 TCP 网段扫描和 ADB 协议轻握手确认作为兜底。
 - 诊断日志：仅记录错误和异常信息，覆盖 WiFi ADB、配对、应用、文件、截图、系统日志、遥控器、屏幕镜像等功能，支持复制排查。
@@ -32,17 +32,17 @@ sky adb 是一款运行在 Android 手机上的全中文 ADB 管理工具。它�
 ## 技术栈
 
 - Kotlin
-- Android Gradle Plugin 9.2.0
-- Kotlin 2.3.20
+- Android Gradle Plugin 9.4.1
+- Kotlin 2.4.21
 - Jetpack Compose + Material 3
 - Navigation Compose
 - Lifecycle ViewModel + StateFlow
 - Kotlin Coroutines / Flow
 - DataStore Preferences
-- Kadb 2.1.3
-- kadb 2.1.3（mDNS 使用平台 NsdManager）
-- scrcpy-server 4.1
-- OkHttp 5.3.2
+- Kadb 2.1.5
+- kadb-mdns 2.1.4（复用库的 Android NSD 实现）
+- scrcpy-server 5.0.1
+- OkHttp 5.5.0
 - Timber
 - JUnit
 
@@ -65,7 +65,7 @@ skyadb/
 │   ├── build.gradle.kts                   # Android App 配置、版本号、签名、依赖
 │   └── src/main/
 │       ├── AndroidManifest.xml            # 权限、应用入口、图标、应用名
-│       ├── assets/scrcpy/scrcpy-server-v4.1 # 官方 scrcpy server 资产
+│       ├── assets/scrcpy/scrcpy-server-v5.0.1 # 官方 scrcpy server 资产
 │       ├── java/com/sky22333/skyadb/
 │       │   ├── AdbManagerApplication.kt   # Application 初始化入口
 │       │   ├── AppServices.kt             # 当前实际使用的轻量服务容器
@@ -84,7 +84,7 @@ skyadb/
 │       │   │   └── DiagnosticResultExtensions.kt # 统一结果失败日志扩展
 │       │   ├── discovery/
 │       │   │   ├── AdbMdnsDiscovery.kt   # mDNS UI 模型与接口（中文文案）
-│       │   │   ├── AndroidAdbMdnsDiscovery.kt # 平台 NsdManager，仅在发现页前台运行
+│       │   │   ├── AndroidAdbMdnsDiscovery.kt # kadb-mdns UI 适配，仅在发现页前台运行
 │       │   │   ├── AdbProtocolProbe.kt    # ADB 协议轻握手确认
 │       │   │   ├── AdbScanModels.kt       # 扫描结果、进度、状态模型
 │       │   │   ├── LanAdbScanner.kt       # 并发局域网扫描、进度节流、协程取消
@@ -113,7 +113,7 @@ skyadb/
 │       │   │   ├── ScrcpyControlClient.kt # scrcpy 控制协议发送：触摸、按键、文本
 │       │   │   ├── ScrcpyProtocol.kt      # scrcpy v4 视频包头和控制包编码
 │       │   │   ├── ScrcpyRepository.kt    # 镜像会话仓库，连接 UI 与底层 session
-│       │   │   ├── ScrcpyServerManager.kt # push 并启动 scrcpy-server-v4.1
+│       │   │   ├── ScrcpyServerManager.kt # push 并启动 scrcpy-server-v5.0.1
 │       │   │   ├── ScrcpySession.kt       # scrcpy video/control socket 和生命周期
 │       │   │   └── ScrcpyVideoDecoder.kt  # MediaCodec 解码到 Surface
 │       │   ├── ui/
@@ -169,12 +169,12 @@ skyadb/
 - Discovery：自动发现和扫描逻辑独立于 UI。mDNS 基于平台 `NsdManager` 仅在发现页前台运行，TCP 扫描支持并发限制、超时、取消和进度节流。
 - Download：下载逻辑独立于页面，支持取消、缓存目录、进度节流和文件名推断。
 - Diagnostics：错误日志仅保存在进程内，用于定位连接、ADB 操作和功能异常，不做永久存储。
-- Scrcpy：屏幕镜像逻辑独立于页面，使用单独 KADB 流式连接、官方 server、MediaCodec 硬解码和控制协议封装。
+- Scrcpy：屏幕镜像逻辑独立于页面，复用当前 WiFi / USB Kadb 连接的独立 ADB 流、官方 server、MediaCodec 硬解码和控制协议封装。
 - Validation：输入校验集中维护，避免每个页面重复实现 IP、端口、URL、路径判断。
 
 ## UI 与交互规范
 
-- App 内所有可见文案必须使用简体中文，品牌名统一写作 `sky adb`。
+- App 内可见文案通过资源提供简体中文和英文，品牌名统一写作 `sky adb`。
 - 使用 Material 3 作为基础，但要保持现代、扁平、克制、工具型产品风格。
 - 页面不能有粗糙默认感，按钮、卡片、输入框、状态徽章、列表间距必须统一。
 - 首页、设置页、设备页、Shell 页等长内容页面使用 `LazyColumn`，避免滚动不跟手。
@@ -247,7 +247,7 @@ skyadb/
 - Release 构建需要仓库 Secrets：`SIGNING_KEY_BASE64`、`KEY_ALIAS`、`KEY_STORE_PASSWORD`、`KEY_PASSWORD`。
 - 签名证书必须使用 PKCS#12 格式，不允许提交到仓库。
 - 提交前执行静态检查，至少确认 `git diff --check` 通过。
-- 当前本地没有完整 Android 构建环境时，以静态检查为准，真实编译由 GitHub Actions 验证。
+- 本地支持构建、单元测试和 Lint；PR / push 自动执行检查，正式发布使用手动工作流。
 
 ## 编码与换行规范
 
@@ -262,19 +262,33 @@ skyadb/
 ## 发布规范
 
 - 当前本地默认版本号：`1.0.0`，`versionCode` 为 `10000`。
-- 正式发布和测试版发布均由 GitHub Actions 手动触发。
+- 正式发布由 GitHub Actions 手动触发。
 - 正式发布输入 `v主版本.次版本.修订版本`，CI 会写入 APK 的 `versionName` 和正式版 `versionCode`。
-- 测试版发布输入基础版本标签，CI 会自动追加 `-beta`，写入测试版 `versionName`，并使用低于同版本正式版的 `versionCode`。
 - Release notes 根据上一个 `v*` tag 到当前提交之间的 commit message 自动生成。
 - Release APK 由 CI 使用 PKCS#12 证书签名后发布到 GitHub Releases。
 
 ## 当前风险与注意事项
 
 - 当前依赖管理统一由 `AppServices` 提供，不保留未使用的 DI 框架；未来如需 Desktop 或多实现架构，再单独评估轻量依赖图或 DI。
-- 屏幕镜像依赖 `app/src/main/assets/scrcpy/scrcpy-server-v4.1`，更新 server 版本时必须同步更新 `ScrcpyConstants` 和相关协议适配。
-- 屏幕镜像会话与 Surface 解耦：`surfaceDestroyed` 只暂停渲染，不拆除 scrcpy；新 Surface 通过 `MediaCodec.setOutputSurface` 与 `RESET_VIDEO` 恢复。视频解码在配置后等待关键帧再上屏。
+- 屏幕镜像依赖 `app/src/main/assets/scrcpy/scrcpy-server-v5.0.1`，更新 server 版本时必须同步更新 `ScrcpyConstants` 和相关协议适配。
+- 屏幕镜像会话与 Surface 解耦：`surfaceDestroyed` 只暂停渲染，不拆除 scrcpy；新 Surface 通过重建 MediaCodec 与 `RESET_VIDEO` 恢复，旧 Surface 的迟到回调不影响新会话。视频解码在配置后等待关键帧再上屏。
 - mDNS 自动发现依赖局域网 multicast / DNS-SD 支持，部分路由器、访客网络、热点隔离、跨网段场景可能无法发现服务；此时用户可继续使用网段扫描或在设置中手动配置网段。
 - 局域网扫描依赖网络拓扑，手机热点、旁路由、访客网络、跨网段场景需要用户在设置中手动配置网段。
 - 本机应用安装到目标设备当前只支持用户应用的单 APK 导出；Split APK / App Bundle 不在当前范围。
 - Shell 是单条命令执行，不是交互式终端。
 - 设备断线后的主动心跳和自动重连当前未作为常驻功能实现，避免增加耗电和后台复杂度。
+
+## 2026-10-16 稳定性与依赖更新
+
+- Gradle Wrapper 9.8.1（固定 SHA-256），AGP 9.4.1、Kotlin 2.4.21、Compose BOM 2026.09.00、Activity 1.13.0、AppCompat 1.8.0、Lifecycle 2.11.0、Navigation 2.10.2、Coroutines 1.11.0、OkHttp 5.5.0、Okio 3.18.2。DataStore 1.2.1、Timber 5.0.1、fastboot-java 1.2.0、JUnit 4.13.2 经核对仍为最新稳定版本。
+- Kadb 核心升级至 [2.1.5](https://github.com/flyfishxu/Kadb/releases/tag/2.1.5)：使用 `KadbUsb.create()` 原生 USB ADB，移除 USB→本地 TCP 自建桥；复用并发流、可靠关闭、断开传播和 Sync 传输优化。不自动重放失败命令。
+- `kadb-mdns` 单独固定为 Maven Central 实际已发布的最新版 2.1.4；上游 2.1.5 README 的 mDNS 示例版本尚无对应制品，不能跟随核心版本号。应用只保留发现模型与 UI 适配，配对查端口使用独立短时会话。
+- 设备目录读取使用 `openSync().list()`，由库协商 Sync v1/v2；不再执行逐文件 Shell/stat 或解析制表符文本。
+- 每个 USB 设备只持有一个 Kadb 实例，镜像视频、音频和控制共享该连接上的独立流，镜像退出只关闭自己的流。USB 总线地址仅用于当前插入，不写入最近设备持久记录。
+- scrcpy 服务端升级至 [5.0.1](https://github.com/Genymobile/scrcpy/releases/tag/v5.0.1)，官方二进制 SHA-256：`764eb6f79811d5211fe9df341120882ba9994c7a61b897d7bf3fb662e53bc536`。5.0 的桌面 FFmpeg/SDL 硬解码变化不直接适用于 Android；本应用使用 MediaCodec 硬解码，并继承新版服务端音频捕获修正。
+- `MediaCodecPump` 在单独 HandlerThread 上串行管理 codec，异步输出不依赖下一次网络输入；视频恢复等待关键帧，支持设备声明的低延迟解码。输入采用反压，音频直接写 PCM ByteBuffer，按真实输出格式只创建一次 AudioTrack。
+- 镜像启停串行化，取消启动与释放归属明确；触摸 MOVE 按指针合并，保留按下/抬起顺序。镜像输入键盘默认关闭，可独立显示/关闭；关闭时同时收起软键盘并释放焦点。
+- Fastboot 连接/命令/释放在 IO 线程串行执行；协议 `FAIL` 不再被显示为命令成功。初始 ADB 授权有超时和取消关闭，USB 错误使用专属提示。
+- 下载取消会关闭 OkHttp Call，服务器文件名只允许落入独立缓存子目录。远端文件下载先写同目录临时文件，成功后原子替换，失败不删除已有文件。
+- 页面状态使用生命周期感知收集，跨线程状态更新使用原子 `update`。ADB 身份密钥按需在 IO 操作时加载；APK 缓存复制移出主线程。Debug 诊断失败同步写入 logcat，便于真机采集。
+- 回归验证包括输入校验、取消传播、Fastboot FAIL、UTF-8 截断、真机 MediaCodec 单帧输出，以及镜像键盘独立显示/关闭测试。K80 连接 K40 已通过原生 USB 并发 Shell、192 KiB 文件字节往返校验、镜像渲染与 Surface 重建后继续渲染的真机测试；共 46 项单元测试通过。Release 已完成编译和 Lint。其他设备兼容性及长时间负载仍需持续观察。

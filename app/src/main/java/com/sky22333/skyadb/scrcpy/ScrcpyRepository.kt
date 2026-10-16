@@ -5,16 +5,22 @@ import android.view.KeyEvent
 import android.view.Surface
 import com.sky22333.skyadb.R
 import com.sky22333.skyadb.adb.KadbManager
-import com.sky22333.skyadb.adb.MirrorConnections
 import com.sky22333.skyadb.diagnostics.DiagnosticLogger
 import com.sky22333.skyadb.diagnostics.DiagnosticModule
 import com.sky22333.skyadb.i18n.appString
 import com.sky22333.skyadb.model.AdbOperationResult
-import java.util.concurrent.atomic.AtomicBoolean
+import com.sky22333.skyadb.model.operationCatching
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class ScrcpyRepository(
@@ -22,12 +28,18 @@ class ScrcpyRepository(
     private val kadbManager: KadbManager,
 ) {
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val stopping = AtomicBoolean(false)
-    private var session: ScrcpySession? = null
-    private var mirrorConnections: MirrorConnections? = null
+    private val lifecycleMutex = Mutex()
+    private val generation = AtomicLong()
+    @Volatile private var session: ScrcpySession? = null
 
     fun requestStop() {
-        cleanupScope.launch { stop() }
+        val token = generation.incrementAndGet()
+        cleanupScope.launch {
+            lifecycleMutex.withLock {
+                // A delayed cleanup must not tear down a newer start request.
+                if (generation.get() == token) stopLocked()
+            }
+        }
     }
 
     suspend fun start(
@@ -35,65 +47,89 @@ class ScrcpyRepository(
         qualityPreset: MirrorQualityPreset = MirrorQualityPreset.Balanced,
         onVideoSize: (Int, Int) -> Unit,
         onStreamError: (Throwable) -> Unit = {},
-    ): AdbOperationResult<Unit> = withContext(Dispatchers.IO) {
-        stop()
-        val options = qualityPreset.options
-        val optionsText = options.diagnosticText()
-        val audioEnabled = (kadbManager.currentDeviceSdkInt() ?: 0) >= MinAudioSdkInt
-        val connections = when (val acquired = kadbManager.beginMirrorSession(audioEnabled)) {
-            is AdbOperationResult.Failure -> return@withContext acquired
-            is AdbOperationResult.Success -> acquired.data
+    ): AdbOperationResult<Unit> =
+        withContext(Dispatchers.IO) {
+            val token = generation.incrementAndGet()
+            lifecycleMutex.withLock {
+                stopLocked()
+                currentCoroutineContext().ensureActive()
+                val options = qualityPreset.options
+                val optionsText = options.diagnosticText()
+                val audioEnabled = (kadbManager.currentDeviceSdkInt() ?: 0) >= MinAudioSdkInt
+                val connections =
+                    when (val acquired = kadbManager.mirrorClient()) {
+                        is AdbOperationResult.Failure -> return@withContext acquired
+                        is AdbOperationResult.Success -> acquired.data
+                    }
+                try {
+                    operationCatching {
+                        val created =
+                            ScrcpySession.start(
+                                context,
+                                connections,
+                                surface,
+                                options,
+                                audioEnabled,
+                                onVideoSize,
+                                onError = { error, serverLog ->
+                                    DiagnosticLogger.record(
+                                        module = DiagnosticModule.Mirror,
+                                        operation = "视频流",
+                                        target = kadbManager.currentEndpoint(),
+                                        message = appString(R.string.scrcpy_video_stream_error),
+                                        suggestion =
+                                            mirrorDiagnosticSuggestion(
+                                                qualityPreset,
+                                                optionsText,
+                                                serverLog,
+                                            ),
+                                        cause = error,
+                                    )
+                                    requestStop()
+                                    onStreamError(error)
+                                },
+                            )
+                        session = created
+                        currentCoroutineContext().ensureActive()
+                        check(generation.get() == token) { "Mirror start cancelled" }
+                        created.start()
+                        AdbOperationResult.Success(Unit)
+                    }
+                        .getOrElse { error ->
+                            stopLocked()
+                            DiagnosticLogger.record(
+                                module = DiagnosticModule.Mirror,
+                                operation = "启动镜像",
+                                target = kadbManager.currentEndpoint(),
+                                message = appString(R.string.scrcpy_start_failed),
+                                suggestion = mirrorDiagnosticSuggestion(qualityPreset, optionsText),
+                                cause = error,
+                            )
+                            AdbOperationResult.Failure(
+                                message = appString(R.string.scrcpy_start_failed),
+                                suggestion =
+                                    error.message
+                                        ?: appString(
+                                            R.string.scrcpy_start_failed_fallback_suggestion
+                                        ),
+                                cause = error,
+                            )
+                        }
+                } finally {
+                    if (!currentCoroutineContext().isActive || generation.get() != token) {
+                        withContext(NonCancellable) { stopLocked() }
+                    }
+                }
+            }
         }
-        mirrorConnections = connections
-
-        runCatching {
-            ScrcpySession.start(
-                context = context,
-                connections = connections,
-                surface = surface,
-                options = options,
-                audioEnabled = audioEnabled,
-                onVideoSize = onVideoSize,
-                onError = { error, serverLog ->
-                    DiagnosticLogger.record(
-                        module = DiagnosticModule.Mirror,
-                        operation = "视频流",
-                        target = kadbManager.currentEndpoint(),
-                        message = appString(R.string.scrcpy_video_stream_error),
-                        suggestion = mirrorDiagnosticSuggestion(qualityPreset, optionsText, serverLog),
-                        cause = error,
-                    )
-                    cleanupScope.launch { stop() }
-                    onStreamError(error)
-                },
-            ).also { session = it }
-        }.fold(
-            onSuccess = { AdbOperationResult.Success(Unit) },
-            onFailure = { error ->
-                stop()
-                DiagnosticLogger.record(
-                    module = DiagnosticModule.Mirror,
-                    operation = "启动镜像",
-                    target = kadbManager.currentEndpoint(),
-                    message = appString(R.string.scrcpy_start_failed),
-                    suggestion = mirrorDiagnosticSuggestion(qualityPreset, optionsText),
-                    cause = error,
-                )
-                AdbOperationResult.Failure(
-                    message = appString(R.string.scrcpy_start_failed),
-                    suggestion = error.message ?: appString(R.string.scrcpy_start_failed_fallback_suggestion),
-                    cause = error,
-                )
-            },
-        )
-    }
 
     fun sendTouch(event: MirrorTouchEvent) {
         runCatching {
             session?.controlClient?.sendTouch(event)
-        }.onFailure { error ->
-            recordControlFailure("发送触摸", appString(R.string.scrcpy_send_touch_failed), error)
         }
+            .onFailure { error ->
+                recordControlFailure("发送触摸", appString(R.string.scrcpy_send_touch_failed), error)
+            }
     }
 
     fun sendKey(keyCode: Int) {
@@ -103,9 +139,10 @@ class ScrcpyRepository(
             } else {
                 session?.controlClient?.sendKey(keyCode)
             }
-        }.onFailure { error ->
-            recordControlFailure("发送按键", appString(R.string.scrcpy_send_key_failed), error)
         }
+            .onFailure { error ->
+                recordControlFailure("发送按键", appString(R.string.scrcpy_send_key_failed), error)
+            }
     }
 
     fun sendText(text: String) {
@@ -125,27 +162,15 @@ class ScrcpyRepository(
 
     fun isRunning(): Boolean = session != null
 
-    suspend fun stop() {
-        if (!stopping.compareAndSet(false, true)) return
-        try {
-            val currentSession = session
-            session = null
-            runCatching { currentSession?.stop() }
-                .onFailure { error ->
-                    DiagnosticLogger.record(
-                        module = DiagnosticModule.Mirror,
-                        operation = "停止镜像",
-                        message = appString(R.string.scrcpy_stop_release_failed),
-                        suggestion = appString(R.string.scrcpy_stop_release_failed_suggestion),
-                        cause = error,
-                    )
-                }
-            val connections = mirrorConnections
-            mirrorConnections = null
-            kadbManager.endMirrorSession(connections)
-        } finally {
-            stopping.set(false)
+    suspend fun stop() =
+        withContext(Dispatchers.IO + NonCancellable) {
+            lifecycleMutex.withLock { stopLocked() }
         }
+
+    private suspend fun stopLocked() {
+        val current = session
+        session = null
+        current?.stop()
     }
 
     private fun recordControlFailure(operation: String, message: String, error: Throwable) {
@@ -163,11 +188,12 @@ class ScrcpyRepository(
         optionsText: String,
         serverLog: String = "",
     ): String {
-        val base = appString(
-            R.string.scrcpy_mirror_diagnostic_template,
-            appString(qualityPreset.labelRes),
-            optionsText,
-        )
+        val base =
+            appString(
+                R.string.scrcpy_mirror_diagnostic_template,
+                appString(qualityPreset.labelRes),
+                optionsText,
+            )
         return if (serverLog.isBlank()) {
             base
         } else {

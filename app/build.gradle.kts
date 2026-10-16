@@ -23,6 +23,7 @@ android {
         targetSdk = 37
         versionCode = ciVersionCode ?: 10000
         versionName = ciVersionName ?: "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -40,7 +41,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            isShrinkResources = false
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -54,6 +55,14 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    packaging {
+        resources {
+            // Bouncy Castle's Java multi-release OSGi descriptors are not Android runtime resources.
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            merges += "META-INF/LICENSE.md"
+        }
     }
 }
 
@@ -73,6 +82,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kadb)
+    implementation(libs.kadb.mdns)
     implementation(libs.fastboot.java)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
@@ -80,6 +90,10 @@ dependencies {
     implementation(libs.timber)
 
     testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

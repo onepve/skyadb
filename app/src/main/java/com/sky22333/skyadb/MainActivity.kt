@@ -19,7 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import com.sky22333.skyadb.data.ThemeMode
@@ -69,8 +69,8 @@ class MainActivity : AppCompatActivity() {
         bindUsbOtgActions()
         registerUsbReceiver()
         setContent {
-            val settings by AppServices.settingsStore.settings.collectAsState(
-                initial = com.sky22333.skyadb.data.AppSettings(),
+            val settings by AppServices.settingsStore.settings.collectAsStateWithLifecycle(
+                initialValue = com.sky22333.skyadb.data.AppSettings(),
             )
             val systemInDarkTheme = isSystemInDarkTheme()
             val darkTheme = when (settings.themeMode) {

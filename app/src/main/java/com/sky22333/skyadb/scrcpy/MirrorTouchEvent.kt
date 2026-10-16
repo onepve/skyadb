@@ -17,9 +17,10 @@ data class MirrorTouchEvent(
         get() = actionMasked == MotionEvent.ACTION_MOVE
 
     companion object {
-        fun from(event: MotionEvent, surfaceWidth: Int, surfaceHeight: Int): MirrorTouchEvent? {
+        fun from(event: MotionEvent, surfaceWidth: Int, surfaceHeight: Int, index: Int = event.actionIndex): MirrorTouchEvent? {
             if (ScrcpyProtocol.motionAction(event.actionMasked) == null) return null
-            val pointerIndex = event.actionIndex.coerceIn(0, event.pointerCount - 1)
+            if (event.pointerCount == 0) return null
+            val pointerIndex = index.coerceIn(0, event.pointerCount - 1)
             return MirrorTouchEvent(
                 actionMasked = event.actionMasked,
                 x = event.getX(pointerIndex),

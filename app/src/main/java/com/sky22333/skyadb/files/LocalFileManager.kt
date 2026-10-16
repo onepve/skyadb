@@ -8,6 +8,7 @@ import com.sky22333.skyadb.R
 import com.sky22333.skyadb.i18n.appString
 import com.sky22333.skyadb.model.RemoteFileEntry
 import java.io.File
+import com.sky22333.skyadb.validation.FileNamePolicy
 
 class LocalFileManager(
     private val context: Context,
@@ -37,6 +38,7 @@ class LocalFileManager(
     }
 
     fun createDirectory(parentPath: String, name: String): Result<Unit> = runCatching {
+        require(FileNamePolicy.isValid(name)) { appString(R.string.files_name_no_separator) }
         val target = File(parentPath, name)
         require(!target.exists()) { appString(R.string.files_name_exists) }
         require(target.mkdir()) { appString(R.string.files_mkdir_failed) }
@@ -52,7 +54,7 @@ class LocalFileManager(
     fun rename(path: String, newName: String): Result<Unit> = runCatching {
         val safeName = newName.trim()
         require(safeName.isNotEmpty()) { appString(R.string.files_rename_name_empty) }
-        require(!safeName.contains('/') && !safeName.contains('\\')) { appString(R.string.files_name_no_separator) }
+        require(FileNamePolicy.isValid(safeName)) { appString(R.string.files_name_no_separator) }
         val source = File(path)
         require(source.exists()) { appString(R.string.files_target_not_exist) }
         val target = File(source.parentFile, safeName)
@@ -76,9 +78,8 @@ class LocalFileManager(
     }
 
     fun copyToCache(uri: Uri, preferredName: String = displayName(uri)): File {
-        val safeName = preferredName.replace(Regex("""[\\/:*?"<>|]"""), "_")
-        val target = File(context.cacheDir, "picked/$safeName")
-        target.parentFile?.mkdirs()
+        val taskDir = File(context.cacheDir, "picked/${java.util.UUID.randomUUID()}").apply { mkdirs() }
+        val target = File(taskDir, FileNamePolicy.sanitize(preferredName))
         context.contentResolver.openInputStream(uri).use { input ->
             requireNotNull(input) { appString(R.string.files_cannot_read_picked) }
             target.outputStream().use { output ->

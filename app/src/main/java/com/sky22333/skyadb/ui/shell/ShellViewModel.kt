@@ -90,7 +90,11 @@ class ShellViewModel(
             output = output,
             history = (listOf(command) + state.value.history).distinct().take(20),
             executeEnabled = true,
-            operationStatus = OperationStatus.Success(appString(R.string.shell_execute_success, exitCode)),
+            operationStatus = if (exitCode == 0) {
+                OperationStatus.Success(appString(R.string.shell_execute_success, exitCode))
+            } else {
+                OperationStatus.Failed(appString(R.string.kadb_command_failed), "Exit $exitCode: ${output.takeLast(500)}")
+            },
         )
     }
 

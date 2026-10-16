@@ -37,12 +37,15 @@ jobs:
 
       - name: 安装 Android SDK 组件
         run: |
-          sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+          sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+
+      - name: 授予 Wrapper 执行权限
+        run: chmod +x gradlew
 
       - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "9.5.1"
+          gradle-version: wrapper
 
       - name: 解码发布签名密钥
         env:
@@ -60,10 +63,10 @@ jobs:
           echo "${SIGNING_KEY_BASE64}" | base64 --decode > "${RUNNER_TEMP}/signing/release.p12"
 
       - name: 运行单元测试
-        run: gradle --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon testDebugUnitTest
 
       - name: 运行 Android Lint
-        run: gradle --no-daemon lintRelease
+        run: ./gradlew --no-daemon lintRelease
 
       - name: 构建 Release APK
         env:
@@ -87,7 +90,7 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION_NAME}"
           VERSION_CODE=$(((MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + 9))
           export VERSION_NAME VERSION_CODE
-          gradle --no-daemon assembleRelease
+          ./gradlew --no-daemon assembleRelease
 
       - name: 发布正式版 APK 到 GitHub Releases
         env:

@@ -47,8 +47,13 @@ object ScrcpyProtocol {
         paste: Boolean = true,
         sequence: Long = 0L,
     ): ByteArray {
-        val bytes = text.toByteArray(Charsets.UTF_8)
-            .let { if (it.size <= ClipboardTextMaxBytes) it else it.copyOf(ClipboardTextMaxBytes) }
+        val encoded = text.toByteArray(Charsets.UTF_8)
+        var length = minOf(encoded.size, ClipboardTextMaxBytes)
+        // A byte limit must not split a UTF-8 continuation sequence.
+        if (length < encoded.size) {
+            while (length > 0 && (encoded[length].toInt() and 0xc0) == 0x80) length--
+        }
+        val bytes = if (length == encoded.size) encoded else encoded.copyOf(length)
         return ByteBuffer.allocate(14 + bytes.size).order(ByteOrder.BIG_ENDIAN)
             .put(TypeSetClipboard.toByte())
             .putLong(sequence)
@@ -93,6 +98,7 @@ object ScrcpyProtocol {
         MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> 0
         MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> 1
         MotionEvent.ACTION_MOVE -> 2
+        MotionEvent.ACTION_CANCEL -> 3
         else -> null
     }
 

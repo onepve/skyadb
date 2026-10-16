@@ -34,11 +34,7 @@ class ScrcpyControlClient(
             videoHeight = height,
         ) ?: return
 
-        val pointerId = if (event.pointerId == 0) {
-            ScrcpyProtocol.PointerMouse
-        } else {
-            event.pointerId.toLong()
-        }
+        val pointerId = event.pointerId.toLong()
         send(
             ScrcpyProtocol.touch(
                 action = action,

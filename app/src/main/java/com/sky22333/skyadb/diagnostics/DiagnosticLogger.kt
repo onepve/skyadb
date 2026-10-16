@@ -3,6 +3,8 @@ package com.sky22333.skyadb.diagnostics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.sky22333.skyadb.BuildConfig
+import timber.log.Timber
 
 object DiagnosticLogger {
     private const val MaxLogs = 500
@@ -51,6 +53,9 @@ object DiagnosticLogger {
                 errorMessage = cause?.message?.trim()?.take(MaxErrorMessageLength),
             )
             logsState.value = (listOf(log) + logsState.value).take(MaxLogs)
+            if (BuildConfig.DEBUG) {
+                Timber.e(cause, "%s / %s: %s", module.name, log.operation, log.message)
+            }
         }
     }
 

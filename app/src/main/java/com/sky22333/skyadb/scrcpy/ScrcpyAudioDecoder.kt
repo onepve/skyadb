@@ -9,175 +9,136 @@ import com.flyfishxu.kadb.stream.AdbStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-/**
- * 按官方 demux 协议播放 scrcpy 音频流；失败时由调用方忽略，不影响视频。
- */
-class ScrcpyAudioDecoder(
-    private val stream: AdbStream,
-    private val codecId: Int,
-) {
-    @Volatile
-    private var running = false
+/** Independent codec callbacks and direct PCM buffers; no per-frame PCM array copy. */
+class ScrcpyAudioDecoder(private val stream: AdbStream, private val codecId: Int) {
+    @Volatile private var running = true
+    private var pump: MediaCodecPump? = null
+    private var track: AudioTrack? = null
+    private var sampleRate = 0
+    private var channelCount = 0
 
-    private var codec: MediaCodec? = null
-    private var audioTrack: AudioTrack? = null
-    private var configPacket: ByteArray? = null
-
-    suspend fun start() = withContext(Dispatchers.IO) {
-        running = true
-        val header = ByteArray(ScrcpyProtocol.PacketHeaderLength)
-        try {
-            if (codecId == ScrcpyProtocol.CodecRaw) {
-                ensureTrack(DefaultSampleRate, 2)
-            }
-            while (running) {
-                stream.source.readFully(header)
-                val packetHeader = ByteBuffer.wrap(header).order(ByteOrder.BIG_ENDIAN)
-                val ptsAndFlags = packetHeader.long
-                val size = packetHeader.int
-                if (size !in 1..1_000_000) continue
-
-                val data = stream.source.readByteArray(size.toLong())
-                val isConfig = (ptsAndFlags and ScrcpyProtocol.PacketFlagConfig) != 0L
-                val pts = ptsAndFlags and ScrcpyProtocol.PacketPtsMask
-                if (isConfig) {
-                    configPacket = data
-                    continue
+    suspend fun start() =
+        withContext(Dispatchers.IO) {
+            val header = ByteArray(ScrcpyProtocol.PacketHeaderLength)
+            val fields = ByteBuffer.wrap(header).order(ByteOrder.BIG_ENDIAN)
+            try {
+                // 0/1 are scrcpy's disabled/failed audio handshake sentinels, not codecs.
+                if (codecId == 0 || codecId == 1) return@withContext
+                while (running) {
+                    currentCoroutineContext().ensureActive()
+                    stream.source.readFully(header)
+                    fields.rewind()
+                    val ptsAndFlags = fields.long
+                    val size = fields.int
+                    require(size in 1..1_000_000) { "Invalid audio packet length: $size" }
+                    val data = stream.source.readByteArray(size.toLong())
+                    if (codecId == ScrcpyProtocol.CodecRaw) {
+                        ensureTrack(DefaultSampleRate, 2)
+                        val written = track!!.write(data, 0, data.size)
+                        check(written == data.size) { "Audio write failed: $written" }
+                        continue
+                    }
+                    val isConfig = (ptsAndFlags and ScrcpyProtocol.PacketFlagConfig) != 0L
+                    if (pump == null) configure(if (isConfig) data else null)
+                    if (!isConfig) pump!!.queue(data, ptsAndFlags and ScrcpyProtocol.PacketPtsMask)
                 }
-
-                if (codecId == ScrcpyProtocol.CodecRaw) {
-                    audioTrack?.write(data, 0, data.size)
-                    continue
-                }
-
-                val decoder = codec ?: configureCodecOrSkip() ?: continue
-                queuePacket(decoder, data, pts)
-                drain(decoder)
+            } finally {
+                withContext(NonCancellable) { pump?.close() }
+                pump = null
+                runCatching { track?.stop() }
+                runCatching { track?.release() }
+                track = null
+                runCatching { stream.close() }
             }
-        } finally {
-            release()
         }
-    }
 
     fun stop() {
         running = false
         runCatching { stream.close() }
     }
 
-    private fun release() {
-        runCatching { codec?.stop() }
-        runCatching { codec?.release() }
-        codec = null
-        runCatching { audioTrack?.pause() }
-        runCatching { audioTrack?.flush() }
-        runCatching { audioTrack?.release() }
-        audioTrack = null
-    }
-
-    private fun configureCodecOrSkip(): MediaCodec? {
-        val mime = when (codecId) {
-            ScrcpyProtocol.CodecOpus -> MediaFormat.MIMETYPE_AUDIO_OPUS
-            ScrcpyProtocol.CodecAac -> MediaFormat.MIMETYPE_AUDIO_AAC
-            ScrcpyProtocol.CodecFlac -> MediaFormat.MIMETYPE_AUDIO_FLAC
-            else -> return null
-        }
+    private suspend fun configure(config: ByteArray?) {
+        val mime =
+            when (codecId) {
+                ScrcpyProtocol.CodecAac -> MediaFormat.MIMETYPE_AUDIO_AAC
+                ScrcpyProtocol.CodecOpus -> MediaFormat.MIMETYPE_AUDIO_OPUS
+                ScrcpyProtocol.CodecFlac -> MediaFormat.MIMETYPE_AUDIO_FLAC
+                else -> error("Unsupported audio codec: $codecId")
+            }
         val format = MediaFormat.createAudioFormat(mime, DefaultSampleRate, 2)
-        configPacket?.let { format.setByteBuffer("csd-0", ByteBuffer.wrap(it)) }
-        val decoder = MediaCodec.createDecoderByType(mime)
-        decoder.configure(format, null, null, 0)
-        decoder.start()
-        codec = decoder
-        ensureTrack(DefaultSampleRate, 2)
-        configPacket?.let { csd ->
-            val index = decoder.dequeueInputBuffer(5_000)
-            if (index >= 0) {
-                decoder.getInputBuffer(index)?.apply {
-                    clear()
-                    put(csd)
-                }
-                decoder.queueInputBuffer(index, 0, csd.size, 0L, MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
-            }
-        }
-        return decoder
-    }
-
-    private fun ensureTrack(sampleRate: Int, channelCount: Int) {
-        if (audioTrack != null) return
-        val track = buildTrack(sampleRate, channelCount)
-        audioTrack = track
-        track.play()
-    }
-
-    private fun buildTrack(sampleRate: Int, channelCount: Int): AudioTrack {
-        val channelMask = if (channelCount >= 2) {
-            AudioFormat.CHANNEL_OUT_STEREO
-        } else {
-            AudioFormat.CHANNEL_OUT_MONO
-        }
-        val minBuffer = AudioTrack.getMinBufferSize(
-            sampleRate,
-            channelMask,
-            AudioFormat.ENCODING_PCM_16BIT,
-        ).coerceAtLeast(sampleRate / 10)
-        return AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                    .build(),
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setChannelMask(channelMask)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .build(),
-            )
-            .setBufferSizeInBytes(minBuffer)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-    }
-
-    private fun queuePacket(decoder: MediaCodec, data: ByteArray, pts: Long) {
-        val index = decoder.dequeueInputBuffer(5_000)
-        if (index < 0) return
-        val inputBuffer = decoder.getInputBuffer(index) ?: return
-        inputBuffer.clear()
-        inputBuffer.put(data)
-        decoder.queueInputBuffer(index, 0, data.size, pts, 0)
-    }
-
-    private fun drain(decoder: MediaCodec) {
-        val info = MediaCodec.BufferInfo()
-        while (true) {
-            val index = decoder.dequeueOutputBuffer(info, 0)
-            when {
-                index >= 0 -> {
-                    if ((info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0 && info.size > 0) {
-                        val output = decoder.getOutputBuffer(index)
-                        val track = audioTrack
-                        if (output != null && track != null) {
-                            val pcm = ByteArray(info.size)
-                            output.position(info.offset)
-                            output.get(pcm)
-                            track.write(pcm, 0, pcm.size)
+        config?.let { format.setByteBuffer("csd-0", ByteBuffer.wrap(it)) }
+        val decoder =
+            MediaCodecPump(
+                onFormat = { output ->
+                    ensureTrack(
+                        output.getInteger(MediaFormat.KEY_SAMPLE_RATE),
+                        output.getInteger(MediaFormat.KEY_CHANNEL_COUNT),
+                    )
+                },
+                onOutput = { codec, index, info ->
+                    try {
+                        if (
+                            (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0 &&
+                                info.size > 0
+                        ) {
+                            val pcm = requireNotNull(codec.getOutputBuffer(index))
+                            pcm.position(info.offset)
+                            pcm.limit(info.offset + info.size)
+                            while (running && pcm.hasRemaining()) {
+                                val written =
+                                    track!!.write(pcm, pcm.remaining(), AudioTrack.WRITE_BLOCKING)
+                                check(written > 0) { "Audio write failed: $written" }
+                            }
                         }
+                    } finally {
+                        codec.releaseOutputBuffer(index, false)
                     }
-                    decoder.releaseOutputBuffer(index, false)
+                },
+                onError = { stop() },
+            )
+        pump = decoder
+        decoder.configure(format)
+    }
+
+    private fun ensureTrack(rate: Int, channels: Int) {
+        if (track != null && sampleRate == rate && channelCount == channels) return
+        runCatching { track?.stop() }
+        runCatching { track?.release() }
+        val mask =
+            if (channels >= 2) AudioFormat.CHANNEL_OUT_STEREO else AudioFormat.CHANNEL_OUT_MONO
+        val bufferSize = AudioTrack.getMinBufferSize(rate, mask, AudioFormat.ENCODING_PCM_16BIT)
+        require(bufferSize > 0) { "Unsupported audio output format" }
+        track =
+            AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setSampleRate(rate)
+                        .setChannelMask(mask)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .build()
+                )
+                .setBufferSizeInBytes(bufferSize)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .apply {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+                    }
                 }
-                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    val format = decoder.outputFormat
-                    val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                    val channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                    runCatching { audioTrack?.release() }
-                    audioTrack = null
-                    ensureTrack(sampleRate, channelCount)
-                }
-                else -> return
-            }
-        }
+                .build()
+                .also { it.play() }
+        sampleRate = rate
+        channelCount = channels
     }
 
     private companion object {

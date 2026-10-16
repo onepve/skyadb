@@ -8,8 +8,9 @@ class AdbManagerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        AdbIdentityManager.initialize(this)
         AppServices.initialize(this)
+        // Identity configuration is immediate; key loading/generation stays off the UI thread.
+        AdbIdentityManager.initialize(this)
 
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())

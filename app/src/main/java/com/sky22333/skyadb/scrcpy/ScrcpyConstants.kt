@@ -1,9 +1,9 @@
 package com.sky22333.skyadb.scrcpy
 
 object ScrcpyConstants {
-    const val ServerVersion = "4.1"
-    const val ServerAssetPath = "scrcpy/scrcpy-server-v4.1"
-    const val RemoteServerPath = "/data/local/tmp/skyadb-scrcpy-server-v4.1.jar"
+    const val ServerVersion = "5.0.1"
+    const val ServerAssetPath = "scrcpy/scrcpy-server-v5.0.1"
+    const val RemoteServerPath = "/data/local/tmp/skyadb-scrcpy-server-v5.0.1.jar"
     const val DefaultMaxSize = 1280
     const val DefaultMaxFps = 30
     const val DefaultVideoBitRate = 4_000_000

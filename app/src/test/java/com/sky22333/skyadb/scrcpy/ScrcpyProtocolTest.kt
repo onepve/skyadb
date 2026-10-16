@@ -10,6 +10,19 @@ import org.junit.Test
 
 class ScrcpyProtocolTest {
     @Test
+    fun clipboardLimitPreservesUtf8CharacterBoundaries() {
+        val text = "a" + "你".repeat(ScrcpyProtocol.ClipboardTextMaxBytes)
+        val packet = ScrcpyProtocol.setClipboard(text)
+        val buffer = ByteBuffer.wrap(packet).order(ByteOrder.BIG_ENDIAN)
+        buffer.position(10)
+        val size = buffer.int
+        val bytes = ByteArray(size).also { buffer.get(it) }
+        val decoded = bytes.toString(Charsets.UTF_8)
+        assertEquals(decoded.toByteArray(Charsets.UTF_8).size, size)
+        org.junit.Assert.assertFalse(decoded.contains('\uFFFD'))
+    }
+
+    @Test
     fun keyEvent_hasExpectedFields() {
         val packet = ScrcpyProtocol.keyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_HOME)
         val buffer = ByteBuffer.wrap(packet).order(ByteOrder.BIG_ENDIAN)
@@ -33,15 +46,16 @@ class ScrcpyProtocolTest {
 
     @Test
     fun touch_hasExpectedSizeAndCoordinates() {
-        val packet = ScrcpyProtocol.touch(
-            action = 0,
-            pointerId = ScrcpyProtocol.PointerMouse,
-            x = 10,
-            y = 20,
-            screenWidth = 1920,
-            screenHeight = 1080,
-            pressure = 1f,
-        )
+        val packet =
+            ScrcpyProtocol.touch(
+                action = 0,
+                pointerId = ScrcpyProtocol.PointerMouse,
+                x = 10,
+                y = 20,
+                screenWidth = 1920,
+                screenHeight = 1080,
+                pressure = 1f,
+            )
         val buffer = ByteBuffer.wrap(packet).order(ByteOrder.BIG_ENDIAN)
 
         assertEquals(32, packet.size)
@@ -69,7 +83,7 @@ class ScrcpyProtocolTest {
                 surfaceHeight = 844,
                 videoWidth = 1920,
                 videoHeight = 1080,
-            ),
+            )
         )
 
         assertNotNull(
@@ -80,7 +94,7 @@ class ScrcpyProtocolTest {
                 surfaceHeight = 844,
                 videoWidth = 1920,
                 videoHeight = 1080,
-            ),
+            )
         )
     }
 }
