@@ -6,7 +6,7 @@
        width="200">
 </p>
 
-sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 WiFi ADB / Wireless Debugging 管理手机、平板、电视和盒子。
+sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 WiFi ADB / Wireless Debugging 或 USB OTG 管理手机、平板、电视和盒子。
 
 ## 功能特性
 
@@ -28,17 +28,19 @@ sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 
 
 ## 如何使用
 
-1. 在目标设备开启开发者选项和无线调试。
-2. 在 sky adb 中输入目标设备 IP 和 ADB 端口，或先使用无线调试配对。
+1. 无线连接：在目标设备开启开发者选项和无线调试，在 sky adb 中输入 IP 和 ADB 端口，或先进行无线调试配对。
+2. USB 连接：使用支持数据传输的 OTG 线连接，允许本机访问 USB 设备，并在目标设备确认 USB 调试授权；Fastboot 模式可直接从 USB OTG 列表连接。
 3. 连接成功后进入设备详情页，使用应用管理、APK 安装、文件管理、截图、遥控器、屏幕镜像或 Shell 等功能。
-4. 常用设备会自动保存到最近设备列表，后续可快速回填连接信息。
+4. 常用 WiFi 设备会自动保存到最近设备列表，后续可快速回填连接信息。
+
+屏幕镜像的控制区可以隐藏，输入键盘默认关闭，可通过顶部键盘按钮独立打开和关闭。
 
 ## 预览
 
 <div style="display:inline-block">
 <img src="docs/img/demo1.jpg" alt="demo1" width="230">
 <img src="docs/img/demo2.jpg" alt="demo2" width="230">
-<img src="docs/img/demo3.jpg" alt="demo2" width="230">
+<img src="docs/img/demo3.jpg" alt="demo3" width="230">
 </div>
 
 ---
@@ -54,6 +56,7 @@ sky adb 是一款运行在 Android 手机上的 ADB 管理工具，用于通过 
 - DataStore
 - OkHttp
 
+详细实现、构建验证和维护规范见 [项目文档](docs/README.md)。
 
 ### 鸣谢
 

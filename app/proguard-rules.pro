@@ -4,12 +4,8 @@
 -keep class com.sky22333.skyadb.AdbManagerApplication { <init>(); }
 -keep class com.sky22333.skyadb.MainActivity { *; }
 
--keep class com.flyfishxu.kadb.** { *; }
 -keep class com.flyfishxu.** { *; }
 -dontwarn com.flyfishxu.**
-
--keep class io.github.rohitverma882.** { *; }
--dontwarn io.github.rohitverma882.**
 
 -dontwarn okhttp3.**
 -dontwarn okio.**

@@ -146,10 +146,6 @@ class FileTransferViewModel(
         }
     }
 
-    fun clearSelection() {
-        state.update { snapshot -> snapshot.copy(selectedPaths = emptySet()) }
-    }
-
     fun openEntry(pane: FilePaneId, entry: RemoteFileEntry) {
         setActivePane(pane)
         if (entry.isDirectory) {

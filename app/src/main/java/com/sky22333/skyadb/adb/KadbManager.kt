@@ -38,7 +38,7 @@ enum class AdbSessionKind {
 }
 
 class KadbManager {
-    private val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val connectionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val sessionMutex = Mutex()
     @Volatile private var activeKadb: Kadb? = null
     @Volatile private var activeEndpoint: String? = null
@@ -138,7 +138,7 @@ class KadbManager {
             withTimeout(timeoutMillis.toLong()) {
                 suspendCancellableCoroutine<Unit> { continuation ->
                     continuation.invokeOnCancellation { client.close() }
-                    bridgeScope.launch {
+                    connectionScope.launch {
                         val result = operationCatching {
                             check(client.shell("echo kadb_ready").exitCode == 0) {
                                 "ADB probe failed"
